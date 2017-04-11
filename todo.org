@@ -1,0 +1,18 @@
+* TODO better colors
+** DONE jsx coloring
+   CLOSED: [2017-04-11 Di 22:19]
+** TODO AST-based coloring
+* TODO test coloring using faceup
+ - add fixtures
+ - add makefile target to generate faceup files: open file in emacs, wait for
+   highlighting to finish, save faceup file
+ - add tests that highlight the fixtures and compare
+* TODO indentation
+ - testing
+** TODO js indentation
+ - working with flow types, including generics
+** TODO jsx indentation
+* TODO flow completion
+* TODO flow checking
+* TODO eslint checking
+* TODO closing jsx tags
