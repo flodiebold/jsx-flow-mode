@@ -607,7 +607,11 @@
 
 (defun jsx-flow//in-jsx-p ())
 
-(defvar jsx-flow--temp-saved-position)
+(defun jsx-flow//font-lock-extend-region ()
+  ;; TODO: improve this!
+  (unless (= font-lock-beg (point-min))
+    (setq font-lock-beg (point-min))
+    t))
 
 (defconst jsx-flow--font-lock-keywords-2
   `(
@@ -621,10 +625,8 @@
      (2 'jsx-flow-jsx-tag-face)
      (jsx-flow//find-next-jsx-attribute
       ;; jump to beginning of attribute list,
-      ;; and search for the end of the attribute list
+      ;; and allow searching until end of file
       (progn (goto-char (match-end 2)) (point-max))
-      ;; jump back to beginning of attribute list after
-      ;; coloring the attributes
       (goto-char (match-end 2))
       (0 'jsx-flow-jsx-attribute-face))
      ;; color closing bracket
@@ -654,6 +656,7 @@
   (with-silent-modifications
     (set-text-properties (point-min) (point-max) nil))
   (setq font-lock-defaults '((jsx-flow--font-lock-keywords-ast)))
+  (setq font-lock-extend-region-functions '(jsx-flow//font-lock-extend-region))
   (set (make-local-variable 'eldoc-documentation-function) #'flowtype/eldoc-show-type-at-point)
   (turn-on-eldoc-mode)
   (flycheck-mode 1))

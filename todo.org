@@ -2,8 +2,10 @@
 ** DONE jsx coloring
    CLOSED: [2017-04-11 Di 22:19]
 ** TODO jsx coloring improvements
-*** TODO color attributes
-*** TODO find closing bracket by scanning over parens
+*** DONE color attributes
+    CLOSED: [2017-04-14 Fr 22:36]
+*** DONE find closing bracket by scanning over parens
+    CLOSED: [2017-04-14 Fr 22:36]
 *** TODO detect better whether it's really jsx
 *** TODO correctly color 'comments' inside of jsx text
 also keywords and 'strings'
