@@ -605,13 +605,18 @@
       (jsx-flow//jump-to-end-of-jsx-tag limit)
       (point))))
 
-(defun jsx-flow//in-jsx-p ())
-
 (defun jsx-flow//font-lock-extend-region ()
   ;; TODO: improve this!
   (unless (= font-lock-beg (point-min))
     (setq font-lock-beg (point-min))
     t))
+
+(defun jsx-flow//match-to-limit (limit)
+  (unless (= limit (point))
+    (let ((beg (point)))
+      (goto-char limit)
+      (set-match-data (list beg limit))
+      t)))
 
 (defconst jsx-flow--font-lock-keywords-2
   `(
@@ -623,18 +628,28 @@
     (,jsx-flow--opening-element-re
      (1 'jsx-flow-jsx-tag-bracket-face)
      (2 'jsx-flow-jsx-tag-face)
+     ;; color attributes
      (jsx-flow//find-next-jsx-attribute
       ;; jump to beginning of attribute list,
       ;; and allow searching until end of file
       (progn (goto-char (match-end 2)) (point-max))
+      ;; go back to beginning of attribute list again, so we can color jsx tags
+      ;; within attributes
       (goto-char (match-end 2))
       (0 'jsx-flow-jsx-attribute-face))
      ;; color closing bracket
-     (jsx-flow//jump-to-end-of-jsx-tag
-      (progn (goto-char (match-end 2)) (point-max))
+     (jsx-flow//match-to-limit
+      ;; jump to beginning of attribute list, then search for end of tag. Save
+      ;; match data so we can use it again in the post function.
+      (progn (save-match-data
+               (goto-char (match-end 2))
+               (jsx-flow//jump-to-end-of-jsx-tag (point-max))
+               (goto-char (match-beginning 0))
+               (match-end 0)))
+      ;; go back to beginning of attribute list again, so we can color jsx tags
+      ;; within attributes
       (goto-char (match-end 2))
-      (0 'jsx-flow-jsx-tag-bracket-face)
-      ))
+      (0 'jsx-flow-jsx-tag-bracket-face)))
     ;; closing jsx elements
     (,jsx-flow--closing-element-re
      (1 'jsx-flow-jsx-tag-bracket-face)
