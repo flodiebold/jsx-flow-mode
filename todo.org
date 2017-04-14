@@ -1,7 +1,18 @@
 * TODO better colors
 ** DONE jsx coloring
    CLOSED: [2017-04-11 Di 22:19]
+** TODO jsx coloring improvements
+*** TODO color attributes
+*** TODO find closing bracket by scanning over parens
+*** TODO detect better whether it's really jsx
+*** TODO correctly color 'comments' inside of jsx text
+also keywords and 'strings'
+** TODO coloring of template literals
 ** TODO AST-based coloring
+*** TODO syntax-propertize-function
+ - [ ] set jsx text to string
+* TODO write tests for regexes
+* TODO AST invalidation / update during typing
 * TODO test coloring using faceup
  - add fixtures
  - add makefile target to generate faceup files: open file in emacs, wait for
@@ -16,3 +27,4 @@
 * TODO flow checking
 * TODO eslint checking
 * TODO closing jsx tags
+* TODO formatting with prettier
