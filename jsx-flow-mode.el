@@ -846,8 +846,91 @@
 
 ;;; Indentation
 (defun jsx-flow//indent-line ()
-  ;; TODO
-  (message "indent-line"))
+  "Indent the current line as JSX (with SGML offsets).
+i.e., customize JSX element indentation with `sgml-basic-offset',
+`sgml-attribute-offset' et al."
+  (interactive)
+  (let ((indentation-type (js--jsx-indented-element-p)))
+    (cond
+     ((eq indentation-type 'expression)
+      (js--expression-in-sgml-indent-line))
+     ((or (eq indentation-type 'first)
+          (eq indentation-type 'after))
+      ;; Don't treat this first thing as a continued expression (often a "<" or
+      ;; ">" causes this misinterpretation)
+      (cl-letf (((symbol-function #'js--continued-expression-p) 'ignore))
+        (js-indent-line)))
+     ((eq indentation-type 'nth)
+      (js--as-sgml (sgml-indent-line)))
+     (t (jsx-flow//indent-js-line)))))
+
+(defun jsx-flow//indent-js-line ()
+  ;; TODO ensure up-to-date parse tree
+  (let ((path (jsx-flow//node-path-at-pos (point-at-bol)))
+        (parse-status (save-excursion (syntax-ppss (point-at-bol))))
+        (offset (- (point) (save-excursion (back-to-indentation) (point)))))
+    (unless (nth 3 parse-status)
+      (indent-line-to (jsx-flow//proper-indentation parse-status path))
+      (when (> offset 0) (forward-char offset)))))
+
+(defun jsx-flow//proper-indentation (parse-status node-path)
+  (save-excursion
+    (back-to-indentation)
+    (cond
+     ((nth 4 parse-status)    ; inside comment
+      (js--get-c-offset 'c (nth 8 parse-status)))
+     ((nth 3 parse-status) 0) ; inside string
+
+     ((js--ctrl-statement-indentation))
+     ((js--multi-line-declaration-indentation))
+
+     ((nth 1 parse-status)
+      ;; A single closing paren/bracket should be indented at the
+      ;; same level as the opening statement. Same goes for
+      ;; "case" and "default".
+      (let ((same-indent-p (looking-at "[]})]"))
+            (switch-keyword-p (looking-at "default\\_>\\|case\\_>[^:]"))
+            (continued-expr-p (js--continued-expression-p)))
+        (goto-char (nth 1 parse-status)) ; go to the opening char
+        (if (looking-at "[({[]\\s-*\\(/[/*]\\|$\\)")
+            (progn ; nothing following the opening paren/bracket
+              (skip-syntax-backward " ")
+              (when (eq (char-before) ?\)) (backward-list))
+              (back-to-indentation)
+              (js--maybe-goto-declaration-keyword-end parse-status)
+              (let* ((in-switch-p (unless same-indent-p
+                                    (looking-at "\\_<switch\\_>")))
+                     (same-indent-p (or same-indent-p
+                                        (and switch-keyword-p
+                                             in-switch-p)))
+                     (indent
+                      (cond (same-indent-p
+                             (current-column))
+                            (continued-expr-p
+                             (+ (current-column) (* 2 js-indent-level)
+                                js-expr-indent-offset))
+                            (t
+                             (+ (current-column) js-indent-level
+                                (pcase (char-after (nth 1 parse-status))
+                                  (?\( js-paren-indent-offset)
+                                  (?\[ js-square-indent-offset)
+                                  (?\{ js-curly-indent-offset)))))))
+                (if in-switch-p
+                    (+ indent js-switch-indent-offset)
+                  indent)))
+          ;; If there is something following the opening
+          ;; paren/bracket, everything else should be indented at
+          ;; the same level.
+          (unless same-indent-p
+            (forward-char)
+            (skip-chars-forward " \t"))
+          (current-column))))
+
+     ((js--continued-expression-p)
+      (+ js-indent-level js-expr-indent-offset))
+
+     (t 0)
+     )))
 
 
 
@@ -876,6 +959,26 @@
   (setq-local comment-start "// ")
   (setq-local comment-end "")
   (setq-local fill-paragraph-function 'js-c-fill-paragraph)
+
+  ;; do filling with cc-mode for now
+  (setq c-comment-prefix-regexp "//+\\|\\**"
+        c-paragraph-start "\\(@[[:alpha:]]+\\>\\|$\\)"
+        c-paragraph-separate "$"
+        c-block-comment-prefix "* "
+        c-line-comment-starter "//"
+        c-comment-start-regexp "/[*/]\\|\\s!"
+        comment-start-skip "\\(//+\\|/\\*+\\)\\s *")
+
+  (let ((c-buffer-is-cc-mode t))
+    ;; FIXME: These are normally set by `c-basic-common-init'.  Should
+    ;; we call it instead?  (Bug#6071)
+    (make-local-variable 'paragraph-start)
+    (make-local-variable 'paragraph-separate)
+    (make-local-variable 'paragraph-ignore-fill-prefix)
+    (make-local-variable 'adaptive-fill-mode)
+    (make-local-variable 'adaptive-fill-regexp)
+    (c-setup-paragraph-variables))
+
   (set (make-local-variable 'eldoc-documentation-function) #'flowtype/eldoc-show-type-at-point)
   (make-local-variable 'jsx-flow--ast)
   (make-local-variable 'jsx-flow--ast-invalid-from)

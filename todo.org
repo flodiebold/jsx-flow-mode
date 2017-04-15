@@ -19,8 +19,10 @@ also keywords and 'strings'
  - [ ] 'from' after import
  - [ ] 'of' in for of
  - [ ] 'type' should maybe be one
+*** TODO refactor AST coloring
 * TODO write tests for regexes
-* TODO AST invalidation / update during typing
+* DONE AST invalidation / update during typing
+  CLOSED: [2017-04-15 Sa 19:24]
 * TODO test coloring using faceup
  - add fixtures
  - add makefile target to generate faceup files: open file in emacs, wait for
@@ -31,7 +33,9 @@ also keywords and 'strings'
 ** TODO js indentation
  - working with flow types, including generics
 ** TODO jsx indentation
-* TODO flow completion
+* DONE flow completion
+  CLOSED: [2017-04-15 Sa 19:24]
+* TODO annotations for flow completions
 * DONE flow checking
   CLOSED: [2017-04-14 Fr 23:21]
 * DONE eslint checking
@@ -40,3 +44,16 @@ also keywords and 'strings'
 * TODO closing jsx tags
 * TODO formatting with prettier
 * TODO show parameter types when in parameter list
+* TODO find references
+ - currently only works well for locals
+* TODO rename
+* TODO commenting out JSX
+* TODO automatic newline insertion between JSX tags
+ - look at electric-layout-rules
+* TODO jest watch integration
+ - [ ] run jest watch in buffer (?)
+ - [ ] show errors
+ - [ ] show snapshot diffs
+* TODO complete AST handling
+ - [ ] exports
+ - [ ] import declarations
