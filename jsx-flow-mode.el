@@ -137,7 +137,13 @@
   "Calls flow to get the type at pos asynchronously; passes the result to result-handler."
   (let* ((loc (jsx-flow//pos-to-flow-location pos))
          (filename (buffer-file-name)))
-    (apply #'jsx-flow//json-flow-call-async result-handler "type-at-pos" filename loc)))
+    (apply #'jsx-flow//json-flow-call-async result-handler "type-at-pos" "--path" filename loc)))
+
+(defun jsx-flow//type-at-pos (pos)
+  "Calls flow to get the type at pos synchronously, returning the result."
+  (let* ((loc (jsx-flow//pos-to-flow-location pos))
+         (filename (buffer-file-name)))
+    (apply #'jsx-flow//json-flow-call "type-at-pos" "--path" filename loc)))
 
 (defun jsx-flow//eldoc-show-type-info (data)
   "Shows the passed type info using eldoc."
@@ -188,6 +194,11 @@
       ((or `VariableDeclarator `ClassDeclaration)
        (let ((id (jsx-flow//node-field ast-node 'id)))
          (jsx-flow//put-identifier-property id 'jsx-flow-prop 'var))
+       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+
+      ((or `AssignmentPattern)
+       (let ((left (jsx-flow//node-field ast-node 'left)))
+         (jsx-flow//put-identifier-property left 'jsx-flow-prop 'var))
        (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
 
       ((or `TypeAlias)
@@ -426,6 +437,8 @@
     ;; Patterns
     (`ObjectPattern
      (jsx-flow//visit-fields '(properties typeAnnotation) fun ast-node))
+    (`AssignmentPattern
+     (jsx-flow//visit-fields '(left right) fun ast-node))
 
     ;; Class declarations
     (`MethodDefinition
@@ -520,6 +533,8 @@
      (jsx-flow//visit-fields '(expression) fun ast-node))
     (`JSXSpreadAttribute
      (jsx-flow//visit-fields '(argument) fun ast-node))
+    (`JSXNamespacedName
+     (jsx-flow//visit-fields '(namespace name) fun ast-node))
 
     ;; TODO: NullableTypeAnnotation, TemplateLiteral
 
@@ -599,7 +614,6 @@
 ;; company provider (TODO)
 
 (defun jsx-flow//fetch-completions (&rest _)
-  (interactive "P")
   (let* ((loc (jsx-flow//pos-to-flow-location (point)))
          (filename (buffer-file-name))
          (response (jsx-flow//json-flow-call "autocomplete" (car loc) (cadr loc)))

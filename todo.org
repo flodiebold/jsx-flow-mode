@@ -39,3 +39,4 @@ also keywords and 'strings'
 * TODO use flow ide connection
 * TODO closing jsx tags
 * TODO formatting with prettier
+* TODO show parameter types when in parameter list
