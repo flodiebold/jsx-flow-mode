@@ -13,6 +13,12 @@ also keywords and 'strings'
 ** TODO AST-based coloring
 *** TODO syntax-propertize-function
  - [ ] set jsx text to string
+ - [ ] regex support
+ - [ ] template literal support
+*** TODO color contextual keywords
+ - [ ] 'from' after import
+ - [ ] 'of' in for of
+ - [ ] 'type' should maybe be one
 * TODO write tests for regexes
 * TODO AST invalidation / update during typing
 * TODO test coloring using faceup
@@ -26,7 +32,10 @@ also keywords and 'strings'
  - working with flow types, including generics
 ** TODO jsx indentation
 * TODO flow completion
-* TODO flow checking
-* TODO eslint checking
+* DONE flow checking
+  CLOSED: [2017-04-14 Fr 23:21]
+* DONE eslint checking
+  CLOSED: [2017-04-14 Fr 23:21]
+* TODO use flow ide connection
 * TODO closing jsx tags
 * TODO formatting with prettier

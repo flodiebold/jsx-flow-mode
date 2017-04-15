@@ -150,17 +150,92 @@
 (defvar jsx-flow--ast nil
   "The AST from flow.")
 
-(defun jsx-flow//receive-ast (data)
+(defvar jsx-flow--ast-invalid-from nil)
+
+(defvar jsx-flow-ast-hook nil
+  "Hook called after an AST update.")
+
+(defun jsx-flow//put-node-property (ast-node property value)
+  (put-text-property (jsx-flow//node-start ast-node)
+                     (jsx-flow//node-end ast-node)
+                     property value))
+
+(defun jsx-flow//put-identifier-property (ast-node property value)
+  (let ((beg (jsx-flow//node-start ast-node))
+        (end (jsx-flow//node-end ast-node)))
+    (when-let ((type-annot (jsx-flow//node-field ast-node 'typeAnnotation)))
+      (setq end (jsx-flow//node-start type-annot)))
+    (put-text-property beg end property value)))
+
+(defvar jsx-flow--propertize-min)
+(defvar jsx-flow--propertize-max)
+
+(defun jsx-flow//walk-ast-propertize (ast-node)
+  (when (and (< (jsx-flow//node-start ast-node) jsx-flow--propertize-max)
+             (< jsx-flow--propertize-min (jsx-flow//node-end ast-node)))
+    (pcase (jsx-flow//node-type ast-node)
+
+      (`Literal
+       (when (jsx-flow//node-field ast-node 'regex)
+         (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'regex)))
+
+      ((or `VariableDeclarator)
+       (let ((id (jsx-flow//node-field ast-node 'id)))
+         (case (jsx-flow//node-type id)
+           ('Identifier
+            (jsx-flow//put-identifier-property id
+                                               'jsx-flow-prop 'var))))
+       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+
+      (`FunctionExpression
+       (when-let ((id (jsx-flow//node-field ast-node 'id)))
+         (jsx-flow//put-identifier-property id 'jsx-flow-prop 'var))
+       (loop for child being the elements of (jsx-flow//node-field ast-node 'params)
+             do (jsx-flow//put-identifier-property child 'jsx-flow-prop 'var))
+       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+
+      (`ObjectPattern
+       (loop for property being the elements of (jsx-flow//node-field ast-node 'properties)
+             do (when-let ((val (jsx-flow//node-field property 'value)))
+                  (when (eq 'Identifier (jsx-flow//node-type val))
+                    (jsx-flow//put-identifier-property val 'jsx-flow-prop 'var))))
+       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+
+      ((or `GenericTypeAnnotation)
+       (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'type))
+
+      (`JSXText
+       (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'text))
+
+      (- (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node)))))
+
+(defun jsx-flow//propertize-ast (beg limit)
+  (with-silent-modifications
+    (remove-list-of-text-properties beg limit '(jsx-flow-prop))
+    (let ((jsx-flow--propertize-min beg)
+          (jsx-flow--propertize-max limit))
+      (jsx-flow//walk-ast-propertize jsx-flow--ast))))
+
+(defun jsx-flow//receive-ast (data invalid-from)
   "Handler for the flow AST call."
-  (message "jsx-flow//receive-ast called")
-  (let ((ast (json-read-from-string data)))
-    (setq jsx-flow--ast ast)
-    ;; (font-lock-fontify-buffer)
-    ))
+  ;; (message "got ast %s" invalid-from)
+  ;; ignore ast if it's already out of date
+  ;; TODO: could use the part up to the new invalid-from
+  (unless jsx-flow--ast-invalid-from
+    (let ((ast (json-read-from-string data)))
+      (setq jsx-flow--ast ast)
+      (jsx-flow//propertize-ast invalid-from (point-max))
+      (font-lock-flush invalid-from (point-max))
+      (run-hooks jsx-flow-ast-hook))))
 
 (defun jsx-flow//do-parse ()
-  "Calls flow to get the AST and stores it in flowtype--ast."
-  (flowtype//call-flow-on-current-buffer-async #'jsx-flow//receive-ast "ast"))
+  "Calls flow to get the AST and stores it in jsx-flow--ast."
+  ;; (message "do-parse")
+  (let ((invalid-from jsx-flow--ast-invalid-from))
+    (setq jsx-flow--ast-invalid-from nil)
+    (flowtype//call-flow-on-current-buffer-async
+     (lambda (data)
+       (jsx-flow//receive-ast data invalid-from)) "ast")))
 
 ;; AST functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -283,6 +358,7 @@
                     RegExpLiteral
 
                     JSXIdentifier
+                    JSXEmptyExpression ;; TODO what's that?
                     JSXText)))
 
 (defun jsx-flow//visit (fun thing)
@@ -330,6 +406,10 @@
      (jsx-flow//visit-fields '(callee arguments) fun ast-node))
     ((or `ClassDeclaration `ClassExpression)
      (jsx-flow//visit-fields '(id superClass body implements typeParameters superTypeParameters) fun ast-node))
+
+    ;; Patterns
+    (`ObjectPattern
+     (jsx-flow//visit-fields '(properties typeAnnotation) fun ast-node))
 
     ;; Class declarations
     (`MethodDefinition
@@ -442,6 +522,63 @@
   (message "Node: %s" (jsx-flow//node-type ast-node))
   (jsx-flow//visit-children #'jsx-flow//walk-ast-print-types ast-node))
 
+(defun jsx-flow//node-path-at-pos (pos &optional ast-node)
+  "Returns the path of AST nodes at pos."
+  (let* ((ast-node (or ast-node jsx-flow--ast))
+         (path nil))
+    (when (<= (jsx-flow//node-start ast-node) pos (1- (jsx-flow//node-end ast-node)))
+      (jsx-flow//visit-children (lambda (node)
+                            (let ((found-path (jsx-flow//node-path-at-pos pos node)))
+                              (when found-path
+                                (setq path found-path))))
+                          ast-node)
+      (cons ast-node path))))
+
+(defun jsx-flow//node-path-to-node (node &optional ast-node)
+  "Returns the path of AST nodes at pos."
+  (let* ((ast-node (or ast-node jsx-flow--ast))
+         (path nil))
+    (if (eq node ast-node)
+        (list node)
+      (when (<= (jsx-flow//node-start ast-node) (jsx-flow//node-start node)
+                (jsx-flow//node-end node) (jsx-flow//node-end ast-node))
+        (jsx-flow//visit-children (lambda (child)
+                              (let ((found-path (jsx-flow//node-path-to-node node child)))
+                                (when found-path
+                                  (setq path found-path))))
+                            ast-node)
+        (cons ast-node path)))))
+
+(defun jsx-flow//node-parent (node &optional ast-node)
+  "Returns the parent of node."
+  (let* ((ast-node (or ast-node jsx-flow--ast))
+         (parent nil))
+    (when (<= (jsx-flow//node-start ast-node) (jsx-flow//node-start node)
+              (jsx-flow//node-end node) (jsx-flow//node-end ast-node))
+      (jsx-flow//visit-children (lambda (child)
+                            (if (eq child node)
+                                (setq parent ast-node)
+                              (let ((found-parent (jsx-flow//node-parent node child)))
+                                (when found-parent
+                                  (setq parent found-parent)))))
+                          ast-node)
+      parent)))
+
+(defun jsx-flow//node-path-string (nodes)
+  (mapconcat (lambda (node) (symbol-name (jsx-flow//node-type node))) nodes " -> "))
+
+(defun jsx-flow/print-node-path-at-point ()
+  (interactive)
+  (message "%s" (jsx-flow//node-path-string (jsx-flow//node-path-at-pos (point))))
+  nil)
+
+(defun jsx-flow//print-nodes (nodes)
+  (dolist (node nodes)
+    (message "Node: %s" (jsx-flow//node-type node))))
+
+(defun jsx-flow//find-deepest-node (pos)
+  "Returns the deepest AST node containing pos."
+  (car (last (jsx-flow//node-path-at-pos pos))))
 
 ;; company provider (TODO)
 
@@ -618,9 +755,23 @@
       (set-match-data (list beg limit))
       t)))
 
+(defun jsx-flow//find-ast-prop (limit)
+  (let ((beg (text-property-not-all (point) limit 'jsx-flow-prop nil)))
+    (when beg
+      (let ((end (next-single-property-change beg 'jsx-flow-prop nil limit)))
+        (goto-char end)
+        (set-match-data (list beg end))
+        t))))
+
+(defun jsx-flow//determine-ast-face ()
+  (case (get-text-property (match-beginning 0) 'jsx-flow-prop)
+    ('var 'font-lock-variable-name-face)
+    ('regex 'font-lock-string-face)
+    ('text 'font-lock-string-face)
+    ('type 'font-lock-type-face)))
+
 (defconst jsx-flow--font-lock-keywords-2
-  `(
-    (,jsx-flow--keyword-re . 'font-lock-keyword-face)
+  `((,jsx-flow--keyword-re . 'font-lock-keyword-face)
     (,jsx-flow--basic-type-re . 'font-lock-type-face)
     (,jsx-flow--constant-re . 'font-lock-constant-face)
 
@@ -660,9 +811,28 @@
   "Level two font lock keywords for `js-mode'.")
 
 (defconst jsx-flow--font-lock-keywords-ast
-  `(,@jsx-flow--font-lock-keywords-2))
+  `(
+    (jsx-flow//find-ast-prop . (0 (jsx-flow//determine-ast-face)))
+    ,@jsx-flow--font-lock-keywords-2))
 
 (defconst jsx-flow-mode-syntax-table js-mode-syntax-table)
+
+;;; Indentation
+(defun jsx-flow//indent-line ()
+  ;; TODO
+  (message "indent-line"))
+
+
+
+(defvar jsx-flow--parse-timer nil)
+
+(defun jsx-flow//after-change (beg end replaced-len)
+  ;; TODO: we could save the min modified position, so we don't need to
+  ;; propertize the whole buffer when we get the new ast
+  (when (or (null jsx-flow--ast-invalid-from) (< beg jsx-flow--ast-invalid-from))
+    (setq jsx-flow--ast-invalid-from beg))
+  ;; (jsx-flow//do-parse)
+  )
 
 ;;;###autoload
 (define-derived-mode jsx-flow-mode
@@ -670,10 +840,28 @@
   "Major mode for JavaScript with Flow and JSX."
   (with-silent-modifications
     (set-text-properties (point-min) (point-max) nil))
-  (setq font-lock-defaults '((jsx-flow--font-lock-keywords-ast)))
-  (setq font-lock-extend-region-functions '(jsx-flow//font-lock-extend-region))
+  (setq-local open-paren-in-column-0-is-defun-start nil)
+  (setq-local font-lock-defaults '((jsx-flow--font-lock-keywords-ast)))
+  (setq-local font-lock-extend-region-functions '(jsx-flow//font-lock-extend-region))
+  (setq-local indent-line-function 'jsx-flow//indent-line)
+  (setq-local parse-sexp-ignore-comments t)
+  (setq-local parse-sexp-lookup-properties t)
+  (setq-local comment-start "// ")
+  (setq-local comment-end "")
+  (setq-local fill-paragraph-function 'js-c-fill-paragraph)
   (set (make-local-variable 'eldoc-documentation-function) #'flowtype/eldoc-show-type-at-point)
+  (make-local-variable 'jsx-flow--ast)
+  (make-local-variable 'jsx-flow--ast-invalid-from)
   (turn-on-eldoc-mode)
+  (setq jsx-flow--ast-invalid-from (point-min))
+  (jsx-flow//do-parse)
+  (add-hook 'after-change-functions #'jsx-flow//after-change t t)
+  (when (null jsx-flow--parse-timer)
+    (setq jsx-flow--parse-timer
+          (run-with-idle-timer 0.2 t
+                               (lambda ()
+                                 (when jsx-flow--ast-invalid-from
+                                   (jsx-flow//do-parse))))))
   (flycheck-mode 1))
 
 (provide 'jsx-flow-mode)
