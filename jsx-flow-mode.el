@@ -613,13 +613,29 @@
 
 ;; company provider (TODO)
 
-(defun jsx-flow//fetch-completions (&rest _)
+(defun jsx-flow//fetch-completion-json ()
   (let* ((loc (jsx-flow//pos-to-flow-location (point)))
-         (filename (buffer-file-name))
-         (response (jsx-flow//json-flow-call "autocomplete" (car loc) (cadr loc)))
+         (filename (buffer-file-name)))
+    (jsx-flow//json-flow-call "autocomplete" filename (car loc) (cadr loc))))
+
+(defun jsx-flow//make-completion-candidate (candidate)
+  (let ((name (cdr (assoc 'name candidate)))
+        (type (cdr (assoc 'type candidate)))
+        (path (cdr (assoc 'path candidate)))
+        (line (cdr (assoc 'line candidate))))
+    (propertize name
+                'type type
+                'path path
+                'line line)))
+
+(defun jsx-flow//fetch-completions (&rest _)
+  (let* ((response (jsx-flow//fetch-completion-json))
          (result (cdr (assoc 'result response)))
-         (names (mapcar (lambda (res) (cdr (assoc 'name res))) result)))
+         (names (mapcar #'jsx-flow//make-completion-candidate result)))
     names))
+
+(defun jsx-flow//get-completion-annotation (candidate)
+  (format " (%s)" (get-text-property 0 'type candidate)))
 
 (defun company-jsx-flow-backend (command &optional arg &rest ignored)
   (interactive (list 'interactive))
@@ -637,7 +653,10 @@
                     (lambda (c) (string-prefix-p arg c))
                     completes)))
          ;; (message "list %s" list)
-         list)))))
+         list)))
+    (annotation (jsx-flow//get-completion-annotation arg))
+    (location (cons (get-text-property 0 'path arg)
+                    (get-text-property 0 'line arg)))))
 
 ;; flycheck
 
