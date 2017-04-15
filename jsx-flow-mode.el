@@ -161,11 +161,12 @@
                      property value))
 
 (defun jsx-flow//put-identifier-property (ast-node property value)
-  (let ((beg (jsx-flow//node-start ast-node))
-        (end (jsx-flow//node-end ast-node)))
-    (when-let ((type-annot (jsx-flow//node-field ast-node 'typeAnnotation)))
-      (setq end (jsx-flow//node-start type-annot)))
-    (put-text-property beg end property value)))
+  (when (and ast-node (eq 'Identifier (jsx-flow//node-type ast-node)))
+    (let ((beg (jsx-flow//node-start ast-node))
+          (end (jsx-flow//node-end ast-node)))
+      (when-let ((type-annot (jsx-flow//node-field ast-node 'typeAnnotation)))
+        (setq end (jsx-flow//node-start type-annot)))
+      (put-text-property beg end property value))))
 
 (defvar jsx-flow--propertize-min)
 (defvar jsx-flow--propertize-max)
@@ -174,20 +175,28 @@
   (when (and (< (jsx-flow//node-start ast-node) jsx-flow--propertize-max)
              (< jsx-flow--propertize-min (jsx-flow//node-end ast-node)))
     (pcase (jsx-flow//node-type ast-node)
+      ;; TODO write a macro for this
 
       (`Literal
        (when (jsx-flow//node-field ast-node 'regex)
          (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'regex)))
 
-      ((or `VariableDeclarator)
+      ((or `VariableDeclarator `ClassDeclaration)
        (let ((id (jsx-flow//node-field ast-node 'id)))
-         (case (jsx-flow//node-type id)
-           ('Identifier
-            (jsx-flow//put-identifier-property id
-                                               'jsx-flow-prop 'var))))
+         (jsx-flow//put-identifier-property id 'jsx-flow-prop 'var))
        (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
 
-      (`FunctionExpression
+      ((or `TypeAlias)
+       (let ((id (jsx-flow//node-field ast-node 'id)))
+         (jsx-flow//put-identifier-property id 'jsx-flow-prop 'type))
+       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+
+      ((or `ClassProperty)
+       (jsx-flow//put-identifier-property (jsx-flow//node-field ast-node 'key)
+                                          'jsx-flow-prop 'var)
+       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+
+      ((or `FunctionExpression `ArrowFunctionExpression)
        (when-let ((id (jsx-flow//node-field ast-node 'id)))
          (jsx-flow//put-identifier-property id 'jsx-flow-prop 'var))
        (loop for child being the elements of (jsx-flow//node-field ast-node 'params)
@@ -259,14 +268,16 @@
   (let ((pos (elt (cdr (assq 'range node)) 0)))
     (if (markerp pos)
         pos
-      (1+ pos))))
+      ;; flow ranges are in bytes, apparently
+      (1+ (byte-to-position pos)))))
 
 (defun jsx-flow//node-end (node)
   "Returns the (exclusive) end position of node."
   (let ((pos (elt (cdr (assq 'range node)) 1)))
     (if (markerp pos)
         pos
-      (1+ pos))))
+      ;; flow ranges are in bytes, apparently
+      (1+ (byte-to-position pos)))))
 
 (defun jsx-flow//node-field (node field)
   "Returns the given field of node."
@@ -355,6 +366,7 @@
 
                     Literal
                     ThisExpression
+                    Super
                     RegExpLiteral
 
                     JSXIdentifier
@@ -388,7 +400,7 @@
      (jsx-flow//visit-fields '(left right) fun ast-node))
     (`MemberExpression
      (jsx-flow//visit-fields '(object property) fun ast-node))
-    (`FunctionExpression
+    ((or `FunctionExpression `ArrowFunctionExpression)
      (jsx-flow//visit-fields '(id typeParameters params returnType body) fun ast-node))
     (`ArrayExpression
      (jsx-flow//visit-fields '(elements) fun ast-node))
