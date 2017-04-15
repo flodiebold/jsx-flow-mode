@@ -48,21 +48,19 @@
 
 (defun jsx-flow//call-flow-into-buffer (&rest args)
   "Calls flow with args on the current buffer, returns the result."
-  (jsx-flow|measure-time
-   (let ((buf (generate-new-buffer jsx-flow:buffer-name)))
-     (apply 'call-process-region (point-min) (point-max) "flow" nil buf nil args)
-     buf)))
+  (let ((buf (generate-new-buffer jsx-flow:buffer-name)))
+    (apply 'call-process-region (point-min) (point-max) "flow" nil buf nil args)
+    buf))
 
 (defun jsx-flow//call-flow-on-current-buffer (&rest args)
   "Calls flow with args on the current buffer, returns the result."
-  (jsx-flow|measure-time
-   (let* ((buf (generate-new-buffer "*flow*")))
-     (unwind-protect
-         (let* ((result (apply 'call-process-region (point-min) (point-max) "flow" nil buf nil args))
-                (output (with-current-buffer buf (buffer-string))))
-           (when (= result 0)
-             output))
-       (kill-buffer buf)))))
+  (let* ((buf (generate-new-buffer "*flow*")))
+    (unwind-protect
+        (let* ((result (apply 'call-process-region (point-min) (point-max) "flow" nil buf nil args))
+               (output (with-current-buffer buf (buffer-string))))
+          (when (= result 0)
+            output))
+      (kill-buffer buf))))
 
 (defun jsx-flow//call-flow-on-current-buffer-async (result-handler &rest args)
   "Calls flow with args on the current buffer asynchronously; passes the result to result-handler."
@@ -121,6 +119,12 @@
   (interactive)
   (let ((loc (jsx-flow//get-def (point))))
     (jsx-flow//show-flow-loc loc)))
+
+(defun jsx-flow//find-refs (pos)
+  "Calls flow to get all refs of the thing at pos, returning the result."
+  (let ((loc (jsx-flow//pos-to-flow-location pos))
+        (filename (buffer-file-name)))
+    (apply #'jsx-flow//json-flow-call "find-refs" filename loc)))
 
 (defun jsx-flow/suggest-into-buffer ()
   "Calls flow suggest and then runs ediff with the result."
@@ -609,20 +613,17 @@
   (case command
     (interactive (company-begin-backend 'company-jsx-flow-backend))
     (prefix (and (eq major-mode 'jsx-flow-mode)
-                 (company-grab-symbol)))
+                 (company-grab-symbol-cons "\\." 2)))
     (candidates
      (progn
-       (message "candidates %s" arg)
+       ;; (message "candidates %s" arg)
        (let* ((completes (jsx-flow//fetch-completions))
-              (_ (message "names %s" completes))
+              ;; (_ (message "names %s" completes))
               (list (remove-if-not
                     (lambda (c) (string-prefix-p arg c))
                     completes)))
-         (message "list %s" list)
+         ;; (message "list %s" list)
          list)))))
-
-;; TODO
-;; (add-to-list 'company-backends 'company-jsx-flow-backend)
 
 ;; flycheck
 
@@ -868,6 +869,7 @@
   (setq jsx-flow--ast-invalid-from (point-min))
   (jsx-flow//do-parse)
   (add-hook 'after-change-functions #'jsx-flow//after-change t t)
+  (add-to-list (make-local-variable 'company-backends) 'company-jsx-flow-backend)
   (when (null jsx-flow--parse-timer)
     (setq jsx-flow--parse-timer
           (run-with-idle-timer 0.2 t
