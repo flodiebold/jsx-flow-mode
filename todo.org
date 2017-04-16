@@ -77,15 +77,19 @@ also keywords and 'strings'
 ** TODO can we let flow typecheck the unsaved buffer?
 ** TODO show syntax errors from AST
 * TODO formatting with prettier
-* TODO show parameter types when in parameter list
-* TODO find references
- - currently only works well for locals
+* eldoc improvements
+** TODO nicer formatting / highlighting for printed types
+** TODO show parameter types when in parameter list
+* TODO highlight references
 * JSX editing
 ** TODO closing jsx tags
+** TODO self-closing to pair by inserting >
 ** TODO automatic newline insertion between JSX tags
   - look at electric-layout-rules
 ** TODO fill & autofill for JSX
 ** TODO commenting out JSX
+** TODO slurping/barfing
+** TODO evil-cleverparens support
 * TODO check support for advanced flow stuff
  - [ ] property variance sigils
  - [ ] declare class/module/...
@@ -93,6 +97,11 @@ also keywords and 'strings'
  - [ ] nullable / optional types
 * TODO expand-region support for JSX and other AST constructs
 * TODO update Cask file etc.
+* snippets
+ - const, let
+ - function
+ - class
+ - render
 * jest watch integration
 ** TODO run jest watch in buffer
 ** TODO show errors inline (?)
@@ -108,6 +117,8 @@ also keywords and 'strings'
 ** TODO auto-require/import
 * refactorings
 ** TODO rename local
+ - [ ] handle patterns & object shorthand
+ - [ ] handle exports
 ** TODO rename exported
 * quick-fixes for eslint errors
 ** TODO eslint --fix integration

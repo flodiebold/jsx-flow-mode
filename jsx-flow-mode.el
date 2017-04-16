@@ -34,6 +34,13 @@
   "Face for JSX attributes."
   :group 'jsx-flow-faces)
 
+;; utils
+(defun assq-recursive (alist &rest keys)
+  "Recursively find KEYs in ALIST."
+  (while keys
+    (setq alist (cdr (assq (pop keys) alist))))
+  alist)
+
 
 ;; flow stuff
 (defun jsx-flow//column-number-at-pos (pos)
@@ -146,11 +153,26 @@
          (filename (buffer-file-name)))
     (apply #'jsx-flow//json-flow-call "type-at-pos" "--path" filename loc)))
 
+(defun jsx-flow//ellipsize (s max-len)
+  (if (<= (length s) max-len)
+      s
+    (concat
+     (substring s 0 (- max-len 3))
+     "...")))
+
+(defun jsx-flow//flow-offset-to-pos (offset)
+  (byte-to-position (1+ offset)))
+
 (defun jsx-flow//eldoc-show-type-info (data)
   "Shows the passed type info using eldoc."
-  (let ((type (cdr (assq 'type data))))
+  (let* ((type (alist-get 'type data)))
     (when (not (equal "(unknown)" type))
-      (eldoc-message type))))
+      (let* ((start (jsx-flow//flow-offset-to-pos
+                     (assq-recursive data 'loc 'start 'offset)))
+             (end (jsx-flow//flow-offset-to-pos
+                   (assq-recursive data 'loc 'end 'offset)))
+             (text (jsx-flow//ellipsize (buffer-substring start end) 30)))
+        (eldoc-message (concat text ": " type))))))
 
 (defun jsx-flow/eldoc-show-type-at-point ()
   "Shows type at point."
@@ -1080,7 +1102,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
     (c-setup-paragraph-variables))
 
   ;; eldoc
-  (set (make-local-variable 'eldoc-documentation-function) #'flowtype/eldoc-show-type-at-point)
+  (set (make-local-variable 'eldoc-documentation-function) #'jsx-flow/eldoc-show-type-at-point)
   (turn-on-eldoc-mode)
 
   ;; parsing
