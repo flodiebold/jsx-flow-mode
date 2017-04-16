@@ -1,43 +1,5 @@
-* TODO better colors
-** DONE jsx coloring
-   CLOSED: [2017-04-11 Di 22:19]
-** TODO jsx coloring improvements
-*** DONE color attributes
-    CLOSED: [2017-04-14 Fr 22:36]
-*** DONE find closing bracket by scanning over parens
-    CLOSED: [2017-04-14 Fr 22:36]
-*** TODO detect better whether it's really jsx
-*** DONE correctly color 'comments' inside of jsx text
-    CLOSED: [2017-04-16 So 10:26]
-also keywords and 'strings'
-** TODO coloring of template literals
-** TODO AST-based coloring
-*** syntax-propertize-function
-**** DONE set jsx text to string
-     CLOSED: [2017-04-16 So 13:21]
-**** DONE regex support
-     CLOSED: [2017-04-16 So 13:24]
-**** TODO template literal support
-*** TODO color contextual keywords
- - [ ] 'from' after import
- - [ ] 'of' in for of
- - [ ] 'type' should maybe be one
-*** TODO refactor AST coloring
- - multimethods?
-*** TODO don't re-propertize after syntax errors
- - i.e. choose position of syntax error, not point-max, as limit
-** TODO coloring of flow declarations
-** DONE syntax coloring of jsx can break during editing
-   CLOSED: [2017-04-16 So 13:19]
- - [X] extend invalid-from to containing JSX element
-* TODO write tests for regexes
 * DONE AST invalidation / update during typing
   CLOSED: [2017-04-15 Sa 19:24]
-* TODO test coloring using faceup
- - add fixtures
- - add makefile target to generate faceup files: open file in emacs, wait for
-   highlighting to finish, save faceup file
- - add tests that highlight the fixtures and compare
 * DONE indentation
   CLOSED: [2017-04-16 So 10:24]
  - testing
@@ -50,27 +12,10 @@ also keywords and 'strings'
   CLOSED: [2017-04-15 Sa 19:24]
 * DONE annotations for flow completions
   CLOSED: [2017-04-16 So 01:15]
-* TODO complete JSX attributes immediately
 * DONE flow checking
   CLOSED: [2017-04-14 Fr 23:21]
 * DONE eslint checking
   CLOSED: [2017-04-14 Fr 23:21]
-* TODO use flow ide connection
-* TODO closing jsx tags
-* TODO formatting with prettier
-* TODO show parameter types when in parameter list
-* TODO find references
- - currently only works well for locals
-* TODO commenting out JSX
-* TODO automatic newline insertion between JSX tags
- - look at electric-layout-rules
-* TODO jest watch integration
- - [ ] run jest watch in buffer (?)
- - [ ] show errors
- - [ ] show snapshot diffs
- - [ ] show test results in a nice hierarchical view
-* TODO check support for advanced flow stuff
- - [ ] property variance sigils
 * DONE complete AST handling
   CLOSED: [2017-04-16 So 13:49]
 https://github.com/estree/estree
@@ -78,9 +23,81 @@ https://github.com/estree/estree
  - [X] import declarations
  - [X] flow declarations
  - [X] template literals
-* TODO auto-require/import
+* better coloring
+** DONE jsx coloring
+   CLOSED: [2017-04-11 Di 22:19]
+** DONE coloring of template literals
+   CLOSED: [2017-04-16 So 14:24]
+** DONE syntax coloring of jsx can break during editing
+   CLOSED: [2017-04-16 So 13:19]
+ - [X] extend invalid-from to containing JSX element
+** jsx coloring improvements
+*** DONE color attributes
+    CLOSED: [2017-04-14 Fr 22:36]
+*** DONE find closing bracket by scanning over parens
+    CLOSED: [2017-04-14 Fr 22:36]
+*** DONE correctly color 'comments' inside of jsx text
+    CLOSED: [2017-04-16 So 10:26]
+also keywords and 'strings'
+*** TODO detect better whether it's really jsx
+** AST-based coloring
+*** syntax-propertize-function
+**** DONE set jsx text to string
+     CLOSED: [2017-04-16 So 13:21]
+**** DONE regex support
+     CLOSED: [2017-04-16 So 13:24]
+**** DONE template literal support
+     CLOSED: [2017-04-16 So 14:24]
+*** TODO color contextual keywords
+ - [ ] 'from' after import
+ - [ ] 'of' in for of
+ - [ ] 'type' should maybe be one
+*** TODO refactor AST coloring
+ - multimethods?
+*** TODO don't re-propertize after syntax errors
+ - i.e. choose position of syntax error, not point-max, as limit
+** TODO coloring of flow declarations
+* tests
+** TODO write tests for regexes
+** TODO test coloring using faceup
+  - add fixtures
+  - add makefile target to generate faceup files: open file in emacs, wait for
+    highlighting to finish, save faceup file
+  - add tests that highlight the fixtures and compare
+* completion improvements
+** TODO complete JSX attributes immediately
+* TODO list all flow errors (in next-error buffer)
+ - set next-error-last-buffer?
+ - use Compilation [Minor] mode ore set next-error-function
+* TODO list all eslint errors (in next-error buffer)
+* TODO use flow ide connection to get type errors
+* TODO can we let flow typecheck the unsaved buffer?
+* TODO formatting with prettier
+* TODO show parameter types when in parameter list
+* TODO find references
+ - currently only works well for locals
+* TODO commenting out JSX
+* electric JSX
+** TODO closing jsx tags
+** TODO automatic newline insertion between JSX tags
+  - look at electric-layout-rules
+* TODO check support for advanced flow stuff
+ - [ ] property variance sigils
+ - [ ] declare class/module/...
+ - [ ] import/export type
 * TODO show syntax errors from AST
-* other quick-fixes for flow errors
+* jest watch integration
+** TODO run jest watch in buffer
+** TODO show errors inline (?)
+** TODO show snapshot diffs
+** TODO show test results in a nice hierarchical view
+** TODO add commands
+ - run tests in buffer
+ - run all tests
+ - toggle automatic run
+ - update snapshots
+* quick-fixes for flow errors
+** TODO auto-require/import
 * refactorings
 ** TODO rename local
 ** TODO rename exported
