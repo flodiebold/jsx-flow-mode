@@ -90,6 +90,7 @@ also keywords and 'strings'
 ** TODO commenting out JSX
 ** TODO slurping/barfing
 ** TODO evil-cleverparens support
+** TODO evil-matchit
 * TODO check support for advanced flow stuff
  - [ ] property variance sigils
  - [ ] declare class/module/...
@@ -97,6 +98,8 @@ also keywords and 'strings'
  - [ ] nullable / optional types
 * TODO expand-region support for JSX and other AST constructs
 * TODO update Cask file etc.
+* TODO use flow binary from node modules
+* TODO use eslint from node modules
 * snippets
  - const, let
  - function

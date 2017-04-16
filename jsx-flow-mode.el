@@ -172,9 +172,9 @@
 (defvar jsx-flow--ast nil
   "The AST from flow.")
 
-(defvar jsx-flow--ast-invalid-from nil)
+(defvar-local jsx-flow--ast-invalid-from nil)
 
-(defvar jsx-flow-ast-hook nil
+(defvar-local jsx-flow-ast-hook nil
   "Hook called after an AST update.")
 
 (defun jsx-flow//put-node-property (ast-node property value)
@@ -1059,8 +1059,8 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   (eldoc-mode 1)
 
   ;; parsing
-  (setq (make-local-variable 'jsx-flow--ast) nil)
-  (setq (make-local-variable 'jsx-flow--ast-invalid-from) (point-min))
+  (setq jsx-flow--ast nil)
+  (setq jsx-flow--ast-invalid-from (point-min))
   (jsx-flow//do-parse)
   (add-hook 'after-change-functions #'jsx-flow//after-change t t)
 
