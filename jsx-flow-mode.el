@@ -1,6 +1,6 @@
 ;;; jsx-flow-mode.el --- Support for JavaScript with JSX and flow annotations -*- lexical-binding: t -*-
 
-;; Version: 0.0.0
+;; Version: 0.1.0
 
 ;; Author: Florian Diebold <flodiebold@gmail.com>
 
@@ -307,29 +307,13 @@
 
 ;; AST functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun jsx-flow//create-node (type)
-  "Creates a new AST node."
-  (list* (cons 'type type) (cons 'range (vector (copy-marker (point)) (copy-marker (point)));;(jsx-flow//make-node-range (point) (point))
-                                 )
-         ;; initialize additional fields
-         (case type
-           (('Program 'BlockStatement) (list (cons 'body (vector)))))))
-
-(defun jsx-flow//vector-field-p (fieldname)
-  (memq fieldname '(typeParameters elements properties expressions arguments params declarations specifiers types properties indexers callProperties)))
-
-(defun jsx-flow//make-node-range (start end)
-  "Formats the given range for the range field of a node."
-  (vector (copy-marker start t) (copy-marker end nil)))
-
 (defun jsx-flow//node-start (node)
   "Returns the (inclusive) start position of node."
   (let ((pos (elt (cdr (assq 'range node)) 0)))
     (if (markerp pos)
         pos
-      ;; flow ranges are in bytes, apparently
-      (if-let ((char-pos (byte-to-position pos)))
-          (1+ char-pos)
+      (if-let ((char-pos (jsx-flow//flow-offset-to-pos pos)))
+          char-pos
         (point-max)))))
 
 (defun jsx-flow//node-end (node)
@@ -337,9 +321,8 @@
   (let ((pos (elt (cdr (assq 'range node)) 1)))
     (if (markerp pos)
         pos
-      ;; flow ranges are in bytes, apparently
-      (if-let ((char-pos (byte-to-position pos)))
-          (1+ char-pos)
+      (if-let ((char-pos (jsx-flow//flow-offset-to-pos pos)))
+          char-pos
         (point-max)))))
 
 (defun jsx-flow//node-field (node field)
@@ -349,13 +332,6 @@
 (defun jsx-flow//node-fields (node)
   "Returns all fields of node."
   (map 'list #'car node))
-
-(defun jsx-flow//set-node-field (node field value)
-  "Sets the given field of node"
-  (let ((pair (assq field node)))
-    (if pair
-        (setcdr (assq field node) value)
-      (nconc node (list (cons field value))))))
 
 (defun jsx-flow//node-type (node)
   "Returns the node type of node."
@@ -627,11 +603,6 @@
       ('JSXOpeningElement (jsx-flow//jsx-closing-element parent))
       ('JSXClosingElement (jsx-flow//jsx-opening-element parent)))))
 
-(defun jsx-flow//walk-ast-print-types (ast-node)
-  "Walks the ast, printing node types."
-  (message "Node: %s" (jsx-flow//node-type ast-node))
-  (jsx-flow//visit-children #'jsx-flow//walk-ast-print-types ast-node))
-
 (defun jsx-flow//node-path-at-pos (pos &optional ast-node)
   "Returns the path of AST nodes at pos."
   (let* ((ast-node (or ast-node jsx-flow--ast))
@@ -652,11 +623,12 @@
         (list node)
       (when (<= (jsx-flow//node-start ast-node) (jsx-flow//node-start node)
                 (jsx-flow//node-end node) (jsx-flow//node-end ast-node))
-        (jsx-flow//visit-children (lambda (child)
-                              (let ((found-path (jsx-flow//node-path-to-node node child)))
-                                (when found-path
-                                  (setq path found-path))))
-                            ast-node)
+        (jsx-flow//visit-children
+         (lambda (child)
+           (let ((found-path (jsx-flow//node-path-to-node node child)))
+             (when found-path
+               (setq path found-path))))
+         ast-node)
         (cons ast-node path)))))
 
 (defun jsx-flow//node-parent (node &optional ast-node)
@@ -665,13 +637,14 @@
          (parent nil))
     (when (<= (jsx-flow//node-start ast-node) (jsx-flow//node-start node)
               (jsx-flow//node-end node) (jsx-flow//node-end ast-node))
-      (jsx-flow//visit-children (lambda (child)
-                            (if (eq child node)
-                                (setq parent ast-node)
-                              (let ((found-parent (jsx-flow//node-parent node child)))
-                                (when found-parent
-                                  (setq parent found-parent)))))
-                          ast-node)
+      (jsx-flow//visit-children
+       (lambda (child)
+         (if (eq child node)
+             (setq parent ast-node)
+           (let ((found-parent (jsx-flow//node-parent node child)))
+             (when found-parent
+               (setq parent found-parent)))))
+       ast-node)
       parent)))
 
 (defun jsx-flow//node-path-string (nodes)
@@ -824,17 +797,11 @@
 (defconst jsx-flow--opening-element-re
   "\\(<\\)\\([[:alnum:]]+\\)\\([[:space:]\n]+[[:alnum:]/]\\|>\\)")
 
-(defconst jsx-flow--selfclosing-element-re
-  "\\(<\\)\\([[:alnum:]]+\\)[[:space:]\n]*\\(/>\\)")
-
 (defconst jsx-flow--closing-element-re
   "\\(</\\)\\([[:alnum:]]+\\)\\(>\\)")
 
 (defconst jsx-flow--jsx-attribute-re
   "\\([[:alnum:]-]+\\)\\|[{/>]")
-
-(defconst jsx-flow--selfclosing-bracket-re
-  "\\(/>\\)")
 
 (defun jsx-flow//find-next-jsx-attribute (limit)
   (let ((result (re-search-forward jsx-flow--jsx-attribute-re limit t)))
@@ -935,13 +902,11 @@
      (1 'jsx-flow-jsx-tag-bracket-face)
      (2 'jsx-flow-jsx-tag-face)
      (3 'jsx-flow-jsx-tag-bracket-face))
-    ,@js--font-lock-keywords-1
-    )
+    ,@js--font-lock-keywords-1)
   "Level two font lock keywords for `js-mode'.")
 
 (defconst jsx-flow--font-lock-keywords-ast
-  `(
-    (jsx-flow//find-ast-prop . (0 (jsx-flow//determine-ast-face)))
+  `((jsx-flow//find-ast-prop . (0 (jsx-flow//determine-ast-face)))
     ,@jsx-flow--font-lock-keywords-2))
 
 (defconst jsx-flow-mode-syntax-table js-mode-syntax-table)
@@ -1108,9 +1073,8 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   (turn-on-eldoc-mode)
 
   ;; parsing
-  (make-local-variable 'jsx-flow--ast)
-  (make-local-variable 'jsx-flow--ast-invalid-from)
-  (setq jsx-flow--ast-invalid-from (point-min))
+  (setq (make-local-variable 'jsx-flow--ast) nil)
+  (setq (make-local-variable 'jsx-flow--ast-invalid-from) (point-min))
   (jsx-flow//do-parse)
   (add-hook 'after-change-functions #'jsx-flow//after-change t t)
 
