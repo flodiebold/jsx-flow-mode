@@ -7,12 +7,13 @@
 *** DONE find closing bracket by scanning over parens
     CLOSED: [2017-04-14 Fr 22:36]
 *** TODO detect better whether it's really jsx
-*** TODO correctly color 'comments' inside of jsx text
+*** DONE correctly color 'comments' inside of jsx text
+    CLOSED: [2017-04-16 So 10:26]
 also keywords and 'strings'
 ** TODO coloring of template literals
 ** TODO AST-based coloring
 *** TODO syntax-propertize-function
- - [ ] set jsx text to string
+ - [X] set jsx text to string
  - [ ] regex support
  - [ ] template literal support
 *** TODO color contextual keywords
@@ -20,6 +21,13 @@ also keywords and 'strings'
  - [ ] 'of' in for of
  - [ ] 'type' should maybe be one
 *** TODO refactor AST coloring
+ - multimethods?
+*** TODO don't re-propertize after syntax errors
+ - i.e. choose position of syntax error, not point-max, as limit
+** TODO coloring of flow declarations
+** DONE syntax coloring of jsx can break during editing
+   CLOSED: [2017-04-16 So 13:19]
+ - [X] extend invalid-from to containing JSX element
 * TODO write tests for regexes
 * DONE AST invalidation / update during typing
   CLOSED: [2017-04-15 Sa 19:24]
@@ -28,14 +36,19 @@ also keywords and 'strings'
  - add makefile target to generate faceup files: open file in emacs, wait for
    highlighting to finish, save faceup file
  - add tests that highlight the fixtures and compare
-* TODO indentation
+* DONE indentation
+  CLOSED: [2017-04-16 So 10:24]
  - testing
-** TODO js indentation
+** DONE js indentation
+   CLOSED: [2017-04-16 So 10:24]
  - working with flow types, including generics
-** TODO jsx indentation
+** DONE jsx indentation
+   CLOSED: [2017-04-16 So 10:24]
 * DONE flow completion
   CLOSED: [2017-04-15 Sa 19:24]
-* TODO annotations for flow completions
+* DONE annotations for flow completions
+  CLOSED: [2017-04-16 So 01:15]
+* TODO complete JSX attributes immediately
 * DONE flow checking
   CLOSED: [2017-04-14 Fr 23:21]
 * DONE eslint checking
@@ -54,6 +67,13 @@ also keywords and 'strings'
  - [ ] run jest watch in buffer (?)
  - [ ] show errors
  - [ ] show snapshot diffs
+ - [ ] show test results in a nice hierarchical view
 * TODO complete AST handling
  - [ ] exports
  - [ ] import declarations
+ - [ ] flow declarations
+* TODO auto-require/import
+* TODO show syntax errors from AST
+* other quick-fixes for flow errors
+* quick-fixes for eslint errors
+** TODO eslint --fix integration

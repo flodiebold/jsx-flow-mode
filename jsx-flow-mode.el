@@ -240,15 +240,28 @@
           (jsx-flow--propertize-max limit))
       (jsx-flow//walk-ast-propertize jsx-flow--ast))))
 
+(defun jsx-flow//extend-region-for-ast-update (beg end)
+  (when-let ((jsx-elem (jsx-flow//deepest-jsx-element-containing beg)))
+    (cons (min (jsx-flow//node-start jsx-elem) beg) end)))
+
+(defun jsx-flow//jsx-element-p (ast-node)
+  (eq (jsx-flow//node-type ast-node) 'JSXElement))
+
+(defun jsx-flow//deepest-jsx-element-containing (pos)
+  (car (last (cl-remove-if-not #'jsx-flow//jsx-element-p
+                               (jsx-flow//node-path-at-pos pos)))))
+
 (defun jsx-flow//receive-ast (data invalid-from)
   "Handler for the flow AST call."
-  ;; (message "got ast %s" invalid-from)
   ;; ignore ast if it's already out of date
   ;; TODO: could use the part up to the new invalid-from
   (unless jsx-flow--ast-invalid-from
     (let ((ast (json-read-from-string data)))
       (setq jsx-flow--ast ast)
+      (when-let ((extended (jsx-flow//extend-region-for-ast-update invalid-from (point-max))))
+        (setq invalid-from (car extended)))
       (jsx-flow//propertize-ast invalid-from (point-max))
+      (syntax-ppss-flush-cache invalid-from)
       (font-lock-flush invalid-from (point-max))
       (run-hooks jsx-flow-ast-hook))))
 
@@ -284,7 +297,9 @@
     (if (markerp pos)
         pos
       ;; flow ranges are in bytes, apparently
-      (1+ (byte-to-position pos)))))
+      (if-let ((char-pos (byte-to-position pos)))
+          (1+ char-pos)
+        (point-max)))))
 
 (defun jsx-flow//node-end (node)
   "Returns the (exclusive) end position of node."
@@ -292,7 +307,9 @@
     (if (markerp pos)
         pos
       ;; flow ranges are in bytes, apparently
-      (1+ (byte-to-position pos)))))
+      (if-let ((char-pos (byte-to-position pos)))
+          (1+ char-pos)
+        (point-max)))))
 
 (defun jsx-flow//node-field (node field)
   "Returns the given field of node."
@@ -863,6 +880,18 @@
 
 (defconst jsx-flow-mode-syntax-table js-mode-syntax-table)
 
+(defun jsx-flow//syntax-propertize (start end)
+  (save-excursion
+    (let ((pos start))
+      (while (< pos end)
+        (setq pos (next-single-property-change pos 'jsx-flow-prop nil end))
+        (let ((prev (get-text-property (1- pos) 'jsx-flow-prop))
+              (next (get-text-property pos 'jsx-flow-prop)))
+          (when (and (eq prev 'text) (not (eq next 'text)))
+            (put-text-property (1- pos) pos 'syntax-table '(15)))
+          (when (and (eq next 'text) (not (eq prev 'text)))
+            (put-text-property pos (1+ pos) 'syntax-table '(15))))))))
+
 ;;; Indentation
 (defun jsx-flow//indent-line ()
   "Indent the current line as JSX (with SGML offsets).
@@ -970,6 +999,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   (with-silent-modifications
     (set-text-properties (point-min) (point-max) nil))
   (setq-local open-paren-in-column-0-is-defun-start nil)
+  (setq-local syntax-propertize-function 'jsx-flow//syntax-propertize)
   (setq-local font-lock-defaults '((jsx-flow--font-lock-keywords-ast)))
   (setq-local font-lock-extend-region-functions '(jsx-flow//font-lock-extend-region))
   (setq-local indent-line-function 'jsx-flow//indent-line)
@@ -978,6 +1008,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   (setq-local comment-start "// ")
   (setq-local comment-end "")
   (setq-local fill-paragraph-function 'js-c-fill-paragraph)
+  (setq-local electric-indent-chars '(10 ?>))
 
   ;; do filling with cc-mode for now
   (setq c-comment-prefix-regexp "//+\\|\\**"
