@@ -400,9 +400,10 @@
                     ThisExpression
                     Super
                     RegExpLiteral
+                    TemplateElement
 
                     JSXIdentifier
-                    JSXEmptyExpression ;; TODO what's that?
+                    JSXEmptyExpression
                     JSXText)))
 
 (defun jsx-flow//visit (fun thing)
@@ -419,6 +420,160 @@
   (dolist (field fields)
     (jsx-flow//visit fun (jsx-flow//node-field thing field))))
 
+(defun jsx-flow//fields-by-type (node-type)
+  (pcase node-type
+    ;; Expressions
+    ((or `AssignmentExpression `BinaryExpression `LogicalExpression)
+     '(left right))
+    (`MemberExpression
+     '(object property))
+    ((or `FunctionExpression `ArrowFunctionExpression)
+     '(id typeParameters params returnType body))
+    (`ArrayExpression
+     '(elements))
+    (`ObjectExpression
+     '(properties))
+    (`Property
+     '(key value))
+    (`SequenceExpression
+     '(expressions))
+    ((or `UpdateExpression `UnaryExpression)
+     '(argument))
+    (`ConditionalExpression
+     '(test alternate consequent))
+    ((or `NewExpression `CallExpression)
+     '(callee arguments))
+    ((or `ClassDeclaration `ClassExpression)
+     '(id superClass body implements typeParameters superTypeParameters))
+    (`YieldExpression
+     '(argument))
+
+    ;; Template literals
+    (`TemplateLiteral
+     '(quasis expressions))
+    (`TaggedTemplateExpression
+     '(tag quasi))
+
+    ;; Patterns
+    (`ObjectPattern
+     '(properties typeAnnotation))
+    (`ArrayPattern
+     '(elements typeAnnotation))
+    (`RestElement
+     '(argument typeAnnotation))
+    (`AssignmentPattern
+     '(left right))
+
+    ;; Class declarations
+    (`MethodDefinition
+     '(key value decorators))
+    (`ClassProperty
+     '(key value typeAnnotation))
+    (`MetaProperty
+     '(meta property))
+
+    ;; Statements
+    (`ExpressionStatement
+     '(expression))
+    (`IfStatement
+     '(test consequent alternate))
+    (`LabeledStatement
+     '(label body))
+    ((or `ContinueStatement `BreakStatement)
+     '(label))
+    (`WithStatement
+     '(object body))
+    (`SwitchStatement
+     '(discriminant cases))
+    ((or `ThrowStatement `ReturnStatement)
+     '(argument))
+    (`TryStatement
+     '(block handler finalizer))
+    (`WhileStatement
+     '(test body))
+    (`DoWhileStatement
+     '(body test))
+    (`ForStatement
+     '(init test update body))
+    ((or `ForOfStatement `ForInStatement)
+     '(left right body))
+    (`FunctionDeclaration
+     '(id typeParameters params returnType body))
+    (`VariableDeclaration
+     '(declarations))
+    (`VariableDeclarator
+     '(id init))
+
+    ;; Clauses
+    (`SwitchCase
+     '(test consequent))
+    (`CatchClause
+     '(param body))
+
+    ;; import/export
+    (`ExportNamedDeclaration
+     '(specifiers declaration source))
+    (`ExportSpecifier
+     '(local exported))
+    (`ExportDefaultDeclaration
+     '(declaration))
+    (`ExportAllDeclaration
+     '(source))
+    (`ImportDeclaration
+     '(specifiers source))
+    (`ImportSpecifier
+     '(local imported))
+    ((or `ImportDefaultSpecifier `ImportNamespaceSpecifier)
+     '(local))
+
+    ;; Type annotations
+    ((or `TypeAnnotation `Identifier)
+     '(typeAnnotation))
+    (`TypeAlias
+     '(id typeParameters right))
+    ((or `IntersectionTypeAnnotation `UnionTypeAnnotation `TupleTypeAnnotation)
+     '(types))
+    (`TypeofTypeAnnotation
+     '(argument))
+    (`GenericTypeAnnotation
+     '(id typeParameters))
+    (`ArrayTypeAnnotation
+     '(elementType))
+    (`ObjectTypeAnnotation
+     '(properties indexers callProperties))
+    (`ObjectTypeProperty
+     '(key value))
+    (`ObjectTypeIndexer
+     '(id key value))
+    (`ObjectTypeCallProperty
+     '(value))
+    (`FunctionTypeAnnotation
+     '(typeParameters params rest returnType))
+    (`FunctionTypeParam
+     '(name typeAnnotation))
+    (`TypeCastExpression
+     '(expression typeAnnotation))
+    ((or `TypeParameterInstantiation `TypeParameterDeclaration)
+     '(params))
+    (`QualifiedTypeIdentifier
+     '(qualification id))
+
+    ;; JSX
+    (`JSXElement
+     '(openingElement children closingElement))
+    (`JSXOpeningElement
+     '(name attributes))
+    (`JSXClosingElement
+     '(name))
+    (`JSXAttribute
+     '(name value))
+    (`JSXExpressionContainer
+     '(expression))
+    (`JSXSpreadAttribute
+     '(argument))
+    (`JSXNamespacedName
+     '(namespace name))))
+
 (defun jsx-flow//visit-children (fun ast-node)
   "Runs fun on each of ast-node's children in turn."
   (pcase (jsx-flow//node-type ast-node)
@@ -427,136 +582,13 @@
     ((pred jsx-flow//body-p)
      (jsx-flow//visit-fields '(body) fun ast-node))
 
-    ;; Expressions
-    ((or `AssignmentExpression `BinaryExpression `LogicalExpression)
-     (jsx-flow//visit-fields '(left right) fun ast-node))
-    (`MemberExpression
-     (jsx-flow//visit-fields '(object property) fun ast-node))
-    ((or `FunctionExpression `ArrowFunctionExpression)
-     (jsx-flow//visit-fields '(id typeParameters params returnType body) fun ast-node))
-    (`ArrayExpression
-     (jsx-flow//visit-fields '(elements) fun ast-node))
-    (`ObjectExpression
-     (jsx-flow//visit-fields '(properties) fun ast-node))
-    (`Property
-     (jsx-flow//visit-fields '(key value) fun ast-node))
-    (`SequenceExpression
-     (jsx-flow//visit-fields '(expressions) fun ast-node))
-    ((or `UpdateExpression `UnaryExpression)
-     (jsx-flow//visit-fields '(argument) fun ast-node))
-    (`ConditionalExpression
-     (jsx-flow//visit-fields '(test alternate consequent) fun ast-node))
-    ((or `NewExpression `CallExpression)
-     (jsx-flow//visit-fields '(callee arguments) fun ast-node))
-    ((or `ClassDeclaration `ClassExpression)
-     (jsx-flow//visit-fields '(id superClass body implements typeParameters superTypeParameters) fun ast-node))
-
-    ;; Patterns
-    (`ObjectPattern
-     (jsx-flow//visit-fields '(properties typeAnnotation) fun ast-node))
-    (`AssignmentPattern
-     (jsx-flow//visit-fields '(left right) fun ast-node))
-
-    ;; Class declarations
-    (`MethodDefinition
-     (jsx-flow//visit-fields '(key value decorators) fun ast-node))
-    (`ClassProperty
-     (jsx-flow//visit-fields '(key value typeAnnotation) fun ast-node))
-
-    ;; Statements
-    (`ExpressionStatement
-     (jsx-flow//visit-fields '(expression) fun ast-node))
-    (`IfStatement
-     (jsx-flow//visit-fields '(test consequent alternate) fun ast-node))
-    (`LabeledStatement
-     (jsx-flow//visit-fields '(label body) fun ast-node))
-    ((or `ContinueStatement `BreakStatement)
-     (jsx-flow//visit-fields '(label) fun ast-node))
-    (`WithStatement
-     (jsx-flow//visit-fields '(object body) fun ast-node))
-    (`SwitchStatement
-     (jsx-flow//visit-fields '(discriminant cases) fun ast-node))
-    ((or `ThrowStatement `ReturnStatement)
-     (jsx-flow//visit-fields '(argument) fun ast-node))
-    (`TryStatement
-     (jsx-flow//visit-fields '(block handler finalizer) fun ast-node))
-    (`WhileStatement
-     (jsx-flow//visit-fields '(test body) fun ast-node))
-    (`DoWhileStatement
-     (jsx-flow//visit-fields '(body test) fun ast-node))
-    (`ForStatement
-     (jsx-flow//visit-fields '(init test update body) fun ast-node))
-    ((or `ForOfStatement `ForInStatement)
-     (jsx-flow//visit-fields '(left right body) fun ast-node))
-    (`FunctionDeclaration
-     (jsx-flow//visit-fields '(id typeParameters params returnType body) fun ast-node))
-    (`VariableDeclaration
-     (jsx-flow//visit-fields '(declarations) fun ast-node))
-    (`VariableDeclarator
-     (jsx-flow//visit-fields '(id init) fun ast-node))
-
-    ;; Clauses
-    (`SwitchCase
-     (jsx-flow//visit-fields '(test consequent) fun ast-node))
-    (`CatchClause
-     (jsx-flow//visit-fields '(param body) fun ast-node))
-
-    ;; Top-level declarations
-    (`ExportDeclaration
-     (jsx-flow//visit-fields '(specifiers declaration) fun ast-node))
-
-    ;; Type annotations
-    ((or `TypeAnnotation `Identifier)
-     (jsx-flow//visit-fields '(typeAnnotation) fun ast-node))
-    (`TypeAlias
-     (jsx-flow//visit-fields '(id typeParameters right) fun ast-node))
-    ((or `IntersectionTypeAnnotation `UnionTypeAnnotation `TupleTypeAnnotation)
-     (jsx-flow//visit-fields '(types) fun ast-node))
-    (`TypeofTypeAnnotation
-     (jsx-flow//visit-fields '(argument) fun ast-node))
-    (`GenericTypeAnnotation
-     (jsx-flow//visit-fields '(id typeParameters) fun ast-node))
-    (`ArrayTypeAnnotation
-     (jsx-flow//visit-fields '(elementType) fun ast-node))
-    (`ObjectTypeAnnotation
-     (jsx-flow//visit-fields '(properties indexers callProperties) fun ast-node))
-    (`ObjectTypeProperty
-     (jsx-flow//visit-fields '(key value) fun ast-node))
-    (`ObjectTypeIndexer
-     (jsx-flow//visit-fields '(id key value) fun ast-node))
-    (`ObjectTypeCallProperty
-     (jsx-flow//visit-fields '(value) fun ast-node))
-    (`FunctionTypeAnnotation
-     (jsx-flow//visit-fields '(typeParameters params rest returnType) fun ast-node))
-    (`FunctionTypeParam
-     (jsx-flow//visit-fields '(name typeAnnotation) fun ast-node))
-    (`TypeCastExpression
-     (jsx-flow//visit-fields '(expression typeAnnotation) fun ast-node))
-    ((or `TypeParameterInstantiation `TypeParameterDeclaration)
-     (jsx-flow//visit-fields '(params) fun ast-node))
-    (`QualifiedTypeIdentifier
-     (jsx-flow//visit-fields '(qualification id) fun ast-node))
-
-    ;; JSX
-    (`JSXElement
-     (jsx-flow//visit-fields '(openingElement children closingElement) fun ast-node))
-    (`JSXOpeningElement
-     (jsx-flow//visit-fields '(name attributes) fun ast-node))
-    (`JSXClosingElement
-     (jsx-flow//visit-fields '(name) fun ast-node))
-    (`JSXAttribute
-     (jsx-flow//visit-fields '(name value) fun ast-node))
-    (`JSXExpressionContainer
-     (jsx-flow//visit-fields '(expression) fun ast-node))
-    (`JSXSpreadAttribute
-     (jsx-flow//visit-fields '(argument) fun ast-node))
-    (`JSXNamespacedName
-     (jsx-flow//visit-fields '(namespace name) fun ast-node))
+    (other
+     (if-let ((fields (jsx-flow//fields-by-type other)))
+         (jsx-flow//visit-fields fields fun ast-node)
+       (message "Unknown node type: %s %s" other (jsx-flow//node-fields ast-node))))
 
     ;; TODO: NullableTypeAnnotation, TemplateLiteral
-
-    (unknown
-     (message "Unknown node type: %s %s" unknown (jsx-flow//node-fields ast-node)))))
+    ))
 
 (defun jsx-flow//jsx-matching-element (jsx-element)
   "Returns the closing element for an opening element and vice versa."

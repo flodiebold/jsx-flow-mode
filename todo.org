@@ -61,7 +61,6 @@ also keywords and 'strings'
 * TODO show parameter types when in parameter list
 * TODO find references
  - currently only works well for locals
-* TODO rename
 * TODO commenting out JSX
 * TODO automatic newline insertion between JSX tags
  - look at electric-layout-rules
@@ -70,12 +69,20 @@ also keywords and 'strings'
  - [ ] show errors
  - [ ] show snapshot diffs
  - [ ] show test results in a nice hierarchical view
-* TODO complete AST handling
- - [ ] exports
- - [ ] import declarations
- - [ ] flow declarations
+* TODO check support for advanced flow stuff
+ - [ ] property variance sigils
+* DONE complete AST handling
+  CLOSED: [2017-04-16 So 13:49]
+https://github.com/estree/estree
+ - [X] exports
+ - [X] import declarations
+ - [X] flow declarations
+ - [X] template literals
 * TODO auto-require/import
 * TODO show syntax errors from AST
 * other quick-fixes for flow errors
+* refactorings
+** TODO rename local
+** TODO rename exported
 * quick-fixes for eslint errors
 ** TODO eslint --fix integration
