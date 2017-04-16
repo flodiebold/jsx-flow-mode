@@ -25,6 +25,12 @@ https://github.com/estree/estree
  - [X] template literals
 * DONE implement flow checker as flycheck-generic-checker
   CLOSED: [2017-04-16 So 16:14]
+* DONE check support for advanced flow stuff
+  CLOSED: [2017-04-16 So 23:02]
+ - [X] property variance sigils
+ - [X] declare class/module/...
+ - [X] import/export type
+ - [X] nullable / optional types
 * better coloring
 ** DONE jsx coloring
    CLOSED: [2017-04-11 Di 22:19]
@@ -91,11 +97,6 @@ also keywords and 'strings'
 ** TODO slurping/barfing
 ** TODO evil-cleverparens support
 ** TODO evil-matchit
-* TODO check support for advanced flow stuff
- - [ ] property variance sigils
- - [ ] declare class/module/...
- - [ ] import/export type
- - [ ] nullable / optional types
 * TODO expand-region support for JSX and other AST constructs
 * TODO update Cask file etc.
 * TODO use flow binary from node modules

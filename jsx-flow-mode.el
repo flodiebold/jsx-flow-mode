@@ -382,10 +382,12 @@
                     StringTypeAnnotation
                     StringLiteralTypeAnnotation
                     VoidTypeAnnotation
+                    NullLiteralTypeAnnotation
                     BooleanTypeAnnotation
                     BooleanLiteralTypeAnnotation
                     AnyTypeAnnotation
                     MixedTypeAnnotation
+                    ExistsTypeAnnotation ;; *
 
                     EmptyStatement
                     DebuggerStatement
@@ -553,6 +555,18 @@
      '(params))
     (`QualifiedTypeIdentifier
      '(qualification id))
+
+    ;; flow type declarations
+    (`DeclareClass
+     '(id typeParameters body extends))
+    (`DeclareModule
+     '(id body))
+    (`DeclareVariable
+     '(id))
+    (`DeclareFunction
+     '(id predicate))
+    (`InterfaceExtends
+     '(id typeParameters))
 
     ;; JSX
     (`JSXElement
@@ -769,6 +783,10 @@
      "type"))
   "Regexp matching any JavaScript (and Flow) keyword.")
 
+(defconst jsx-flow--declare-keyword-re
+  "\\(declare\\)[[:space:]]+\\(module\\|class\\|var\\|const\\|function\\)"
+  "Regexp matching the declare keyword for flow declarations.")
+
 (defconst jsx-flow--basic-type-re
   (js--regexp-opt-symbol
    '("boolean" "number" "string" "any" "void" "mixed"))
@@ -854,6 +872,7 @@
 
 (defconst jsx-flow--font-lock-keywords-2
   `((,jsx-flow--keyword-re . 'font-lock-keyword-face)
+    (,jsx-flow--declare-keyword-re (1 'font-lock-keyword-face))
     (,jsx-flow--basic-type-re . 'font-lock-type-face)
     (,jsx-flow--constant-re . 'font-lock-constant-face)
 
