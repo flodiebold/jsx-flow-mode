@@ -168,7 +168,8 @@
 (defun jsx-flow//put-node-property (ast-node property value)
   (put-text-property (jsx-flow//node-start ast-node)
                      (jsx-flow//node-end ast-node)
-                     property value))
+                     property value)
+  nil)
 
 (defun jsx-flow//put-identifier-property (ast-node property value)
   (when (and ast-node (eq 'Identifier (jsx-flow//node-type ast-node)))
@@ -176,7 +177,8 @@
           (end (jsx-flow//node-end ast-node)))
       (when-let ((type-annot (jsx-flow//node-field ast-node 'typeAnnotation)))
         (setq end (jsx-flow//node-start type-annot)))
-      (put-text-property beg end property value))))
+      (put-text-property beg end property value)))
+  nil)
 
 (defvar jsx-flow--propertize-min)
 (defvar jsx-flow--propertize-max)
@@ -184,59 +186,58 @@
 (defun jsx-flow//walk-ast-propertize (ast-node)
   (when (and (< (jsx-flow//node-start ast-node) jsx-flow--propertize-max)
              (< jsx-flow--propertize-min (jsx-flow//node-end ast-node)))
-    (pcase (jsx-flow//node-type ast-node)
-      ;; TODO write a macro for this
+    (unless
+        (pcase (jsx-flow//node-type ast-node)
+          (`Literal
+           (when (jsx-flow//node-field ast-node 'regex)
+             (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'regex)))
 
-      (`Literal
-       (when (jsx-flow//node-field ast-node 'regex)
-         (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'regex)))
+          ((or `VariableDeclarator `ClassDeclaration)
+           (let ((id (jsx-flow//node-field ast-node 'id)))
+             (jsx-flow//put-identifier-property id 'jsx-flow-prop 'var)))
 
-      ((or `VariableDeclarator `ClassDeclaration)
-       (let ((id (jsx-flow//node-field ast-node 'id)))
-         (jsx-flow//put-identifier-property id 'jsx-flow-prop 'var))
-       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+          ((or `AssignmentPattern)
+           (let ((left (jsx-flow//node-field ast-node 'left)))
+             (jsx-flow//put-identifier-property left 'jsx-flow-prop 'var)))
 
-      ((or `AssignmentPattern)
-       (let ((left (jsx-flow//node-field ast-node 'left)))
-         (jsx-flow//put-identifier-property left 'jsx-flow-prop 'var))
-       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+          ((or `ImportSpecifier)
+           (let ((left (jsx-flow//node-field ast-node 'local)))
+             (jsx-flow//put-identifier-property left 'jsx-flow-prop 'var)))
 
-      ((or `TypeAlias)
-       (let ((id (jsx-flow//node-field ast-node 'id)))
-         (jsx-flow//put-identifier-property id 'jsx-flow-prop 'type))
-       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+          ((or `TypeAlias)
+           (let ((id (jsx-flow//node-field ast-node 'id)))
+             (jsx-flow//put-identifier-property id 'jsx-flow-prop 'type)))
 
-      ((or `ClassProperty)
-       (jsx-flow//put-identifier-property (jsx-flow//node-field ast-node 'key)
-                                          'jsx-flow-prop 'var)
-       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+          ((or `ClassProperty)
+           (jsx-flow//put-identifier-property (jsx-flow//node-field ast-node 'key)
+                                              'jsx-flow-prop 'var))
 
-      ((or `FunctionExpression `ArrowFunctionExpression)
-       (when-let ((id (jsx-flow//node-field ast-node 'id)))
-         (jsx-flow//put-identifier-property id 'jsx-flow-prop 'var))
-       (loop for child being the elements of (jsx-flow//node-field ast-node 'params)
-             do (jsx-flow//put-identifier-property child 'jsx-flow-prop 'var))
-       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+          ((or `FunctionExpression `ArrowFunctionExpression)
+           (when-let ((id (jsx-flow//node-field ast-node 'id)))
+             (jsx-flow//put-identifier-property id 'jsx-flow-prop 'var))
+           (mapc (lambda (child) (jsx-flow//put-identifier-property child 'jsx-flow-prop 'var))
+                 (jsx-flow//node-field ast-node 'params))
+           nil)
 
-      (`ObjectPattern
-       (loop for property being the elements of (jsx-flow//node-field ast-node 'properties)
-             do (when-let ((val (jsx-flow//node-field property 'value)))
-                  (when (eq 'Identifier (jsx-flow//node-type val))
-                    (jsx-flow//put-identifier-property val 'jsx-flow-prop 'var))))
-       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+          (`ObjectPattern
+           (mapc (lambda (property)
+                   (when-let ((val (jsx-flow//node-field property 'value)))
+                     (when (eq 'Identifier (jsx-flow//node-type val))
+                       (jsx-flow//put-identifier-property val 'jsx-flow-prop 'var))))
+                 (jsx-flow//node-field ast-node 'properties))
+           nil)
 
-      ((or `GenericTypeAnnotation)
-       (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'type))
+          ((or `GenericTypeAnnotation)
+           (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'type))
 
-      (`TemplateLiteral
-       (mapc (lambda (elem) (jsx-flow//put-node-property elem 'jsx-flow-prop 'template-text))
-             (jsx-flow//node-field ast-node 'quasis))
-       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+          (`TemplateLiteral
+           (mapc (lambda (elem) (jsx-flow//put-node-property elem 'jsx-flow-prop 'template-text))
+                 (jsx-flow//node-field ast-node 'quasis))
+           nil)
 
-      (`JSXText
-       (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'text))
-
-      (- (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node)))))
+          (`JSXText
+           (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'text)))
+      (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))))
 
 (defun jsx-flow//propertize-ast (beg limit)
   (with-silent-modifications

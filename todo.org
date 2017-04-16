@@ -86,3 +86,6 @@ https://github.com/estree/estree
 ** TODO rename exported
 * quick-fixes for eslint errors
 ** TODO eslint --fix integration
+* bugs
+** TODO smartparens prevents deleting first character of JSX text
+** TODO smartparens can't match delimiters in template literal
