@@ -228,6 +228,11 @@
       ((or `GenericTypeAnnotation)
        (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'type))
 
+      (`TemplateLiteral
+       (mapc (lambda (elem) (jsx-flow//put-node-property elem 'jsx-flow-prop 'template-text))
+             (jsx-flow//node-field ast-node 'quasis))
+       (jsx-flow//visit-children #'jsx-flow//walk-ast-propertize ast-node))
+
       (`JSXText
        (jsx-flow//put-node-property ast-node 'jsx-flow-prop 'text))
 
@@ -861,7 +866,6 @@
 (defun jsx-flow//determine-ast-face ()
   (case (get-text-property (match-beginning 0) 'jsx-flow-prop)
     ('var 'font-lock-variable-name-face)
-    ('text 'font-lock-string-face)
     ('type 'font-lock-type-face)))
 
 (defconst jsx-flow--font-lock-keywords-2
@@ -918,14 +922,13 @@
         (setq pos (next-single-property-change pos 'jsx-flow-prop nil end))
         (let ((prev (get-text-property (1- pos) 'jsx-flow-prop))
               (next (get-text-property pos 'jsx-flow-prop)))
-          (when (and (eq prev 'text) (not (eq next 'text)))
-            (put-text-property (1- pos) pos 'syntax-table '(15)))
-          (when (and (eq prev 'regex) (not (eq next 'regex)))
-            (put-text-property (1- pos) pos 'syntax-table '(15)))
-          (when (and (eq next 'text) (not (eq prev 'text)))
-            (put-text-property pos (1+ pos) 'syntax-table '(15)))
-          (when (and (eq next 'regex) (not (eq prev 'regex)))
-            (put-text-property pos (1+ pos) 'syntax-table '(15))))))))
+          (unless (eq prev next)
+            (case prev
+              ((text template-text regex)
+               (put-text-property (1- pos) pos 'syntax-table '(15))))
+            (case next
+              ((text template-text regex)
+               (put-text-property pos (1+ pos) 'syntax-table '(15))))))))))
 
 ;;; Indentation
 (defun jsx-flow//indent-line ()
