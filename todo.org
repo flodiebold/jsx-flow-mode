@@ -66,6 +66,8 @@ also keywords and 'strings'
   - add tests that highlight the fixtures and compare
 * completion improvements
 ** TODO complete JSX attributes immediately
+* DONE implement flow checker as flycheck-generic-checker
+  CLOSED: [2017-04-16 So 16:14]
 * TODO list all flow errors (in next-error buffer)
  - set next-error-last-buffer?
  - use Compilation [Minor] mode ore set next-error-function
@@ -88,6 +90,7 @@ also keywords and 'strings'
  - [ ] import/export type
  - [ ] nullable / optional types
 * TODO show syntax errors from AST
+* TODO expand-region support for JSX and other AST constructs
 * jest watch integration
 ** TODO run jest watch in buffer
 ** TODO show errors inline (?)
@@ -108,3 +111,4 @@ also keywords and 'strings'
 * bugs
 ** TODO smartparens prevents deleting first character of JSX text
 ** TODO smartparens can't match delimiters in template literal
+* update Cask file etc.

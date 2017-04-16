@@ -8,6 +8,7 @@
 
 (require 'json)
 (require 'js)
+(require 'dash)
 
 (defgroup jsx-flow-faces nil
   "Faces for jsx-flow-mode."
@@ -721,29 +722,35 @@
          (line (cdr (assoc 'line first-part)))
          (col  (cdr (assoc 'start first-part)))
          (desc (--reduce (format "%s\n%s" acc it) (--map (cdr (assoc 'descr it)) msg-parts))))
-    (if (string= file (buffer-file-name))
-        (list (flycheck-error-new-at line col level desc :checker checker :id counter))
-      '())))
+    (when (string= file (buffer-file-name))
+      (list (flycheck-error-new-at line col level desc :checker checker :id counter)))))
 
-(defun jsx-flow//parse-status-errors (output checker buffer)
+(defun jsx-flow//parse-status-errors (json checker buffer)
   "Parse flow status errors in OUTPUT."
-  (let* ((json (json-read-from-string output))
-         (errors (cdr (assoc 'errors json)))
-         (counter 0)
-         (errs (-mapcat
-                (lambda (err)
-                  (setq counter (1+ counter))
-                  (jsx-flow//fc-convert-error err checker (number-to-string counter)))
-                errors)))
-    (if errs
-        errs
-      (list (flycheck-error-new-at 0 0 'warning "Errors in other files exist" :checker checker :id "0")))))
+  (let* ((errors (cdr (assoc 'errors json)))
+         (counter 0))
+    (-mapcat
+     (lambda (err)
+       (setq counter (1+ counter))
+       (jsx-flow//fc-convert-error err checker (number-to-string counter)))
+     errors)))
+
+(defun jsx-flow//check-flow (checker report)
+  (let ((buffer (current-buffer)))
+    (jsx-flow//json-flow-call-async
+     (lambda (status)
+       (let ((errors (jsx-flow//parse-status-errors status checker buffer)))
+         (funcall report 'finished errors)))
+     "status")))
 
 (with-eval-after-load 'flycheck
-  (flycheck-define-command-checker 'javascript-flow
+  (flycheck-define-generic-checker 'javascript-flow
     "A JavaScript syntax and style checker using Flow."
-    :command '("flow" "status" "--json")
-    :error-parser #'jsx-flow//parse-status-errors
+    :start #'jsx-flow//check-flow
+    ;; TODO :interrupt handler
+    ;; TODO :verify
+    ;; TODO :predicate checking for @flow comment?
+    ;; could just do AST check otherwise
     :next-checkers '((error . javascript-eslint))
     :modes '(jsx-flow-mode))
 
