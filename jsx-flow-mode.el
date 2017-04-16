@@ -54,12 +54,6 @@
      (message "%.06f" (float-time (time-since time)))
      result))
 
-(defun jsx-flow//call-flow-into-buffer (&rest args)
-  "Calls flow with args on the current buffer, returns the result."
-  (let ((buf (generate-new-buffer jsx-flow:buffer-name)))
-    (apply 'call-process-region (point-min) (point-max) "flow" nil buf nil args)
-    buf))
-
 (defun jsx-flow//call-flow-on-current-buffer (&rest args)
   "Calls flow with args on the current buffer, returns the result."
   (let* ((buf (generate-new-buffer "*flow*")))
@@ -133,13 +127,6 @@
   (let ((loc (jsx-flow//pos-to-flow-location pos))
         (filename (buffer-file-name)))
     (apply #'jsx-flow//json-flow-call "find-refs" filename loc)))
-
-(defun jsx-flow/suggest-into-buffer ()
-  "Calls flow suggest and then runs ediff with the result."
-  (interactive)
-  (let* ((filename (buffer-file-name))
-         (diff-buffer (jsx-flow//call-flow-into-buffer "suggest" filename)))
-    (ediff-patch-file 2 diff-buffer)))
 
 (defun jsx-flow//type-at-pos-async (result-handler pos)
   "Calls flow to get the type at pos asynchronously; passes the result to result-handler."
@@ -301,7 +288,7 @@
   ;; (message "do-parse")
   (let ((invalid-from jsx-flow--ast-invalid-from))
     (setq jsx-flow--ast-invalid-from nil)
-    (flowtype//call-flow-on-current-buffer-async
+    (jsx-flow//call-flow-on-current-buffer-async
      (lambda (data)
        (jsx-flow//receive-ast data invalid-from)) "ast")))
 
@@ -701,7 +688,7 @@
        ;; (message "candidates %s" arg)
        (let* ((completes (jsx-flow//fetch-completions))
               ;; (_ (message "names %s" completes))
-              (list (remove-if-not
+              (list (cl-remove-if-not
                     (lambda (c) (string-prefix-p arg c))
                     completes)))
          ;; (message "list %s" list)
@@ -712,37 +699,37 @@
 
 ;; flycheck
 
-(defun jsx-flow//fc-convert-error (error checker counter)
-  "Return a list of errors from ERROR."
-  (let* ((msg-parts (cdr (assoc 'message error)))
-         (first-part (elt msg-parts 0))
-         (level (if (eq (cdr (assoc 'level first-part)) "warning") 'warning 'error))
-         (file (cdr (assoc 'path first-part)))
-         (line (cdr (assoc 'line first-part)))
-         (col  (cdr (assoc 'start first-part)))
-         (desc (--reduce (format "%s\n%s" acc it) (--map (cdr (assoc 'descr it)) msg-parts))))
-    (when (string= file (buffer-file-name))
-      (list (flycheck-error-new-at line col level desc :checker checker :id counter)))))
-
-(defun jsx-flow//parse-status-errors (json checker buffer)
-  "Parse flow status errors in OUTPUT."
-  (let* ((errors (cdr (assoc 'errors json)))
-         (counter 0))
-    (-mapcat
-     (lambda (err)
-       (setq counter (1+ counter))
-       (jsx-flow//fc-convert-error err checker (number-to-string counter)))
-     errors)))
-
-(defun jsx-flow//check-flow (checker report)
-  (let ((buffer (current-buffer)))
-    (jsx-flow//json-flow-call-async
-     (lambda (status)
-       (let ((errors (jsx-flow//parse-status-errors status checker buffer)))
-         (funcall report 'finished errors)))
-     "status")))
-
 (with-eval-after-load 'flycheck
+  (defun jsx-flow//fc-convert-error (error checker counter)
+    "Return a list of errors from ERROR."
+    (let* ((msg-parts (cdr (assoc 'message error)))
+           (first-part (elt msg-parts 0))
+           (level (if (eq (cdr (assoc 'level first-part)) "warning") 'warning 'error))
+           (file (cdr (assoc 'path first-part)))
+           (line (cdr (assoc 'line first-part)))
+           (col  (cdr (assoc 'start first-part)))
+           (desc (--reduce (format "%s\n%s" acc it) (--map (cdr (assoc 'descr it)) msg-parts))))
+      (when (string= file (buffer-file-name))
+        (list (flycheck-error-new-at line col level desc :checker checker :id counter)))))
+
+  (defun jsx-flow//parse-status-errors (json checker buffer)
+    "Parse flow status errors in OUTPUT."
+    (let* ((errors (cdr (assoc 'errors json)))
+           (counter 0))
+      (-mapcat
+       (lambda (err)
+         (setq counter (1+ counter))
+         (jsx-flow//fc-convert-error err checker (number-to-string counter)))
+       errors)))
+
+  (defun jsx-flow//check-flow (checker report)
+    (let ((buffer (current-buffer)))
+      (jsx-flow//json-flow-call-async
+       (lambda (status)
+         (let ((errors (jsx-flow//parse-status-errors status checker buffer)))
+           (funcall report 'finished errors)))
+       "status")))
+
   (flycheck-define-generic-checker 'javascript-flow
     "A JavaScript syntax and style checker using Flow."
     :start #'jsx-flow//check-flow
@@ -754,8 +741,7 @@
     :modes '(jsx-flow-mode))
 
   (flycheck-add-mode 'javascript-eslint 'jsx-flow-mode)
-  (add-to-list 'flycheck-checkers 'javascript-flow)
-  )
+  (add-to-list 'flycheck-checkers 'javascript-flow))
 
 
 (defconst jsx-flow--keyword-re
@@ -1070,7 +1056,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
 
   ;; eldoc
   (set (make-local-variable 'eldoc-documentation-function) #'jsx-flow/eldoc-show-type-at-point)
-  (turn-on-eldoc-mode)
+  (eldoc-mode 1)
 
   ;; parsing
   (setq (make-local-variable 'jsx-flow--ast) nil)
