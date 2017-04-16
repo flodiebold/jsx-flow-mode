@@ -20,17 +20,17 @@
   :group 'jsx-flow-faces)
 
 (defface jsx-flow-jsx-tag-face
-  '((t :inherit web-mode-html-tag-face))
+  '((t :weight normal :inherit font-lock-keyword-face))
   "Face for JSX tags."
   :group 'jsx-flow-faces)
 
 (defface jsx-flow-jsx-tag-bracket-face
-  '((t :inherit web-mode-html-tag-bracket-face))
+  '((t :inherit shadow))
   "Face for JSX tags brackets (i.e. < and />)."
   :group 'jsx-flow-faces)
 
 (defface jsx-flow-jsx-attribute-face
-  '((t :inherit web-mode-html-attr-name-face))
+  '((t :weight normal :slant italic :inherit font-lock-constant-face))
   "Face for JSX attributes."
   :group 'jsx-flow-faces)
 
