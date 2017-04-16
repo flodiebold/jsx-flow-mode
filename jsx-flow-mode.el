@@ -829,7 +829,6 @@
 (defun jsx-flow//determine-ast-face ()
   (case (get-text-property (match-beginning 0) 'jsx-flow-prop)
     ('var 'font-lock-variable-name-face)
-    ('regex 'font-lock-string-face)
     ('text 'font-lock-string-face)
     ('type 'font-lock-type-face)))
 
@@ -889,7 +888,11 @@
               (next (get-text-property pos 'jsx-flow-prop)))
           (when (and (eq prev 'text) (not (eq next 'text)))
             (put-text-property (1- pos) pos 'syntax-table '(15)))
+          (when (and (eq prev 'regex) (not (eq next 'regex)))
+            (put-text-property (1- pos) pos 'syntax-table '(15)))
           (when (and (eq next 'text) (not (eq prev 'text)))
+            (put-text-property pos (1+ pos) 'syntax-table '(15)))
+          (when (and (eq next 'regex) (not (eq prev 'regex)))
             (put-text-property pos (1+ pos) 'syntax-table '(15))))))))
 
 ;;; Indentation

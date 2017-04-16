@@ -12,10 +12,12 @@
 also keywords and 'strings'
 ** TODO coloring of template literals
 ** TODO AST-based coloring
-*** TODO syntax-propertize-function
- - [X] set jsx text to string
- - [ ] regex support
- - [ ] template literal support
+*** syntax-propertize-function
+**** DONE set jsx text to string
+     CLOSED: [2017-04-16 So 13:21]
+**** DONE regex support
+     CLOSED: [2017-04-16 So 13:24]
+**** TODO template literal support
 *** TODO color contextual keywords
  - [ ] 'from' after import
  - [ ] 'of' in for of
