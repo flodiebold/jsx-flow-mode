@@ -39,6 +39,8 @@ https://github.com/estree/estree
 ** DONE syntax coloring of jsx can break during editing
    CLOSED: [2017-04-16 So 13:19]
  - [X] extend invalid-from to containing JSX element
+** DONE coloring of flow declarations
+   CLOSED: [2017-04-16 So 23:02]
 ** jsx coloring improvements
 *** DONE color attributes
     CLOSED: [2017-04-14 Fr 22:36]
@@ -64,7 +66,6 @@ also keywords and 'strings'
  - multimethods?
 *** TODO don't re-propertize after syntax errors
  - i.e. choose position of syntax error, not point-max, as limit
-** TODO coloring of flow declarations
 * tests
 ** TODO write tests for regexes
 ** TODO test coloring using faceup

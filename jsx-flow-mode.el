@@ -784,7 +784,7 @@
   "Regexp matching any JavaScript (and Flow) keyword.")
 
 (defconst jsx-flow--declare-keyword-re
-  "\\(declare\\)[[:space:]]+\\(module\\|class\\|var\\|const\\|function\\)"
+  "\\(declare\\)[[:space:]]+\\(module\\|class\\|var\\|const\\|function\\|type\\)"
   "Regexp matching the declare keyword for flow declarations.")
 
 (defconst jsx-flow--basic-type-re
