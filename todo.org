@@ -81,10 +81,12 @@ also keywords and 'strings'
 ** TODO closing jsx tags
 ** TODO automatic newline insertion between JSX tags
   - look at electric-layout-rules
+** TODO fill & autofill for JSX
 * TODO check support for advanced flow stuff
  - [ ] property variance sigils
  - [ ] declare class/module/...
  - [ ] import/export type
+ - [ ] nullable / optional types
 * TODO show syntax errors from AST
 * jest watch integration
 ** TODO run jest watch in buffer

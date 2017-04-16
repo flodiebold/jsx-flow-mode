@@ -591,10 +591,7 @@
     (other
      (if-let ((fields (jsx-flow//fields-by-type other)))
          (jsx-flow//visit-fields fields fun ast-node)
-       (message "Unknown node type: %s %s" other (jsx-flow//node-fields ast-node))))
-
-    ;; TODO: NullableTypeAnnotation, TemplateLiteral
-    ))
+       (message "Unknown node type: %s %s" other (jsx-flow//node-fields ast-node))))))
 
 (defun jsx-flow//jsx-matching-element (jsx-element)
   "Returns the closing element for an opening element and vice versa."
@@ -666,7 +663,7 @@
   "Returns the deepest AST node containing pos."
   (car (last (jsx-flow//node-path-at-pos pos))))
 
-;; company provider (TODO)
+;; company provider
 
 (defun jsx-flow//fetch-completion-json ()
   (let* ((loc (jsx-flow//pos-to-flow-location (point)))
@@ -931,7 +928,7 @@
               ((text template-text regex)
                (put-text-property pos (1+ pos) 'syntax-table '(15))))))))))
 
-;;; Indentation
+;;; Indentation (mostly copied from js-mode)
 (defun jsx-flow//indent-line ()
   "Indent the current line as JSX (with SGML offsets).
 i.e., customize JSX element indentation with `sgml-basic-offset',
@@ -953,6 +950,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
 
 (defun jsx-flow//indent-js-line ()
   ;; TODO ensure up-to-date parse tree
+  ;; (parse tree is currently unused though)
   (let ((path (jsx-flow//node-path-at-pos (point-at-bol)))
         (parse-status (save-excursion (syntax-ppss (point-at-bol))))
         (offset (- (point) (save-excursion (back-to-indentation) (point)))))
@@ -1024,32 +1022,36 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
 (defvar jsx-flow--parse-timer nil)
 
 (defun jsx-flow//after-change (beg end replaced-len)
-  ;; TODO: we could save the min modified position, so we don't need to
-  ;; propertize the whole buffer when we get the new ast
+  ;; invalidate AST from beg to end of file
   (when (or (null jsx-flow--ast-invalid-from) (< beg jsx-flow--ast-invalid-from))
-    (setq jsx-flow--ast-invalid-from beg))
-  ;; (jsx-flow//do-parse)
-  )
+    (setq jsx-flow--ast-invalid-from beg)))
 
 ;;;###autoload
 (define-derived-mode jsx-flow-mode
   prog-mode "JSX/Flow"
   "Major mode for JavaScript with Flow and JSX."
+
+  ;; TODO this can go away soon
   (with-silent-modifications
     (set-text-properties (point-min) (point-max) nil))
+
   (setq-local open-paren-in-column-0-is-defun-start nil)
   (setq-local syntax-propertize-function 'jsx-flow//syntax-propertize)
   (setq-local font-lock-defaults '((jsx-flow--font-lock-keywords-ast)))
   (setq-local font-lock-extend-region-functions '(jsx-flow//font-lock-extend-region))
   (setq-local indent-line-function 'jsx-flow//indent-line)
+
   (setq-local parse-sexp-ignore-comments t)
   (setq-local parse-sexp-lookup-properties t)
   (setq-local comment-start "// ")
   (setq-local comment-end "")
+
   (setq-local fill-paragraph-function 'js-c-fill-paragraph)
+
+  ;; electric indent after > for closing JSX tags
   (setq-local electric-indent-chars '(10 ?>))
 
-  ;; do filling with cc-mode for now
+  ;; do filling with cc-mode for now (copied from js-mode)
   (setq c-comment-prefix-regexp "//+\\|\\**"
         c-paragraph-start "\\(@[[:alpha:]]+\\>\\|$\\)"
         c-paragraph-separate "$"
@@ -1068,20 +1070,27 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
     (make-local-variable 'adaptive-fill-regexp)
     (c-setup-paragraph-variables))
 
+  ;; eldoc
   (set (make-local-variable 'eldoc-documentation-function) #'flowtype/eldoc-show-type-at-point)
+  (turn-on-eldoc-mode)
+
+  ;; parsing
   (make-local-variable 'jsx-flow--ast)
   (make-local-variable 'jsx-flow--ast-invalid-from)
-  (turn-on-eldoc-mode)
   (setq jsx-flow--ast-invalid-from (point-min))
   (jsx-flow//do-parse)
   (add-hook 'after-change-functions #'jsx-flow//after-change t t)
-  (add-to-list (make-local-variable 'company-backends) 'company-jsx-flow-backend)
+
   (when (null jsx-flow--parse-timer)
     (setq jsx-flow--parse-timer
           (run-with-idle-timer 0.2 t
                                (lambda ()
                                  (when jsx-flow--ast-invalid-from
                                    (jsx-flow//do-parse))))))
+
+  ;; company
+  (add-to-list (make-local-variable 'company-backends) 'company-jsx-flow-backend)
+
   (flycheck-mode 1))
 
 (provide 'jsx-flow-mode)
