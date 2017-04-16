@@ -23,6 +23,8 @@ https://github.com/estree/estree
  - [X] import declarations
  - [X] flow declarations
  - [X] template literals
+* DONE implement flow checker as flycheck-generic-checker
+  CLOSED: [2017-04-16 So 16:14]
 * better coloring
 ** DONE jsx coloring
    CLOSED: [2017-04-11 Di 22:19]
@@ -66,31 +68,31 @@ also keywords and 'strings'
   - add tests that highlight the fixtures and compare
 * completion improvements
 ** TODO complete JSX attributes immediately
-* DONE implement flow checker as flycheck-generic-checker
-  CLOSED: [2017-04-16 So 16:14]
-* TODO list all flow errors (in next-error buffer)
- - set next-error-last-buffer?
- - use Compilation [Minor] mode ore set next-error-function
-* TODO list all eslint errors (in next-error buffer)
-* TODO use flow ide connection to get type errors
-* TODO can we let flow typecheck the unsaved buffer?
+* error checking improvements
+** TODO list all flow errors (in next-error buffer)
+  - set next-error-last-buffer?
+  - use Compilation [Minor] mode ore set next-error-function
+** TODO list all eslint errors (in next-error buffer)
+** TODO use flow ide connection to get type errors
+** TODO can we let flow typecheck the unsaved buffer?
+** TODO show syntax errors from AST
 * TODO formatting with prettier
 * TODO show parameter types when in parameter list
 * TODO find references
  - currently only works well for locals
-* TODO commenting out JSX
-* electric JSX
+* JSX editing
 ** TODO closing jsx tags
 ** TODO automatic newline insertion between JSX tags
   - look at electric-layout-rules
 ** TODO fill & autofill for JSX
+** TODO commenting out JSX
 * TODO check support for advanced flow stuff
  - [ ] property variance sigils
  - [ ] declare class/module/...
  - [ ] import/export type
  - [ ] nullable / optional types
-* TODO show syntax errors from AST
 * TODO expand-region support for JSX and other AST constructs
+* TODO update Cask file etc.
 * jest watch integration
 ** TODO run jest watch in buffer
 ** TODO show errors inline (?)
@@ -101,6 +103,7 @@ also keywords and 'strings'
  - run all tests
  - toggle automatic run
  - update snapshots
+** TODO coverage display
 * quick-fixes for flow errors
 ** TODO auto-require/import
 * refactorings
@@ -111,4 +114,3 @@ also keywords and 'strings'
 * bugs
 ** TODO smartparens prevents deleting first character of JSX text
 ** TODO smartparens can't match delimiters in template literal
-* update Cask file etc.

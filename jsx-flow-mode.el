@@ -534,7 +534,7 @@
      '(local))
 
     ;; Type annotations
-    ((or `TypeAnnotation `Identifier)
+    ((or `TypeAnnotation `Identifier `NullableTypeAnnotation)
      '(typeAnnotation))
     (`TypeAlias
      '(id typeParameters right))
@@ -558,6 +558,8 @@
      '(typeParameters params rest returnType))
     (`FunctionTypeParam
      '(name typeAnnotation))
+    (`TypeParameter
+     '(bound default))
     (`TypeCastExpression
      '(expression typeAnnotation))
     ((or `TypeParameterInstantiation `TypeParameterDeclaration)
@@ -786,7 +788,7 @@
 
 (defconst jsx-flow--basic-type-re
   (js--regexp-opt-symbol
-   '("boolean" "number" "string" "any" "void"))
+   '("boolean" "number" "string" "any" "void" "mixed"))
   "Regular expression matching any predefined type in Flow.")
 
 (defconst jsx-flow--constant-re
