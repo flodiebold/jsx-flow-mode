@@ -1147,7 +1147,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
 
   (when jsx-flow-type-coverage
     (jsx-flow//do-coverage))
-  (add-hook 'after-save-hook #'jsx-flow//do-coverage)
+  (add-hook 'after-save-hook #'jsx-flow//do-coverage nil t)
 
   (when (null jsx-flow--parse-timer)
     (setq jsx-flow--parse-timer

@@ -123,10 +123,15 @@ also keywords and 'strings'
 * quick-fixes for flow errors
 ** TODO auto-require/import
 * refactorings
+ - use prettier to print AST for these (at least the more complicated ones)
 ** TODO rename local
  - [ ] handle patterns & object shorthand
  - [ ] handle exports
 ** TODO rename exported
+** TODO inline local
+** TODO extract local
+** TODO extract parameter
+** TODO extract function
 * quick-fixes for eslint errors
 ** TODO eslint --fix integration
 * bugs
