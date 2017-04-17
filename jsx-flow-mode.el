@@ -69,7 +69,7 @@
   (let* ((buf (generate-new-buffer "*flow*"))
          (process (apply #'start-process "flow" buf "flow" args)))
     (set-process-sentinel process
-                          (lambda (process event)
+                          (lambda (process _event)
                             (when (equal 'exit (process-status process))
                               (let ((output (with-current-buffer (process-buffer process) (buffer-string))))
                                 (kill-buffer (process-buffer process))
@@ -80,18 +80,36 @@
         (process-send-region process (point-min) (point-max))
         (process-send-eof process)))))
 
-(defun jsx-flow//json-flow-call (&rest args)
+(defun jsx-flow//call-flow-async (result-handler &rest args)
+  "Calls flow with args asynchronously; passes the result to result-handler."
+  (let* ((buf (generate-new-buffer "*flow*"))
+         (process (apply #'start-process "flow" buf "flow" args)))
+    (set-process-sentinel process
+                          (lambda (process _event)
+                            (when (equal 'exit (process-status process))
+                              (let ((output (with-current-buffer (process-buffer process) (buffer-string))))
+                                (kill-buffer (process-buffer process))
+                                (with-demoted-errors "jsx-flow: error in flow result handler: %s"
+                                  (funcall result-handler output))))))))
+
+(defun jsx-flow//json-call-flow-on-current-buffer (&rest args)
   "Calls flow on the current buffer passing --json, parses the result."
   (let* ((args (append args '("--json")))
          (output (apply #'jsx-flow//call-flow-on-current-buffer args)))
     (when output
       (json-read-from-string output))))
 
-(defun jsx-flow//json-flow-call-async (result-handler &rest args)
+(defun jsx-flow//json-call-flow-on-current-buffer-async (result-handler &rest args)
   "Calls flow on the current buffer passing --json asynchronously; parses the result and gives it to result-handler."
   (let ((args (append args '("--json")))
         (handler (lambda (output) (funcall result-handler (json-read-from-string output)))))
     (apply #'jsx-flow//call-flow-on-current-buffer-async handler args)))
+
+(defun jsx-flow//json-call-flow-async (result-handler &rest args)
+  "Calls flow, passing --json asynchronously; parses the result and gives it to result-handler."
+  (let ((args (append args '("--json")))
+        (handler (lambda (output) (funcall result-handler (json-read-from-string output)))))
+    (apply #'jsx-flow//call-flow-async handler args)))
 
 (defun jsx-flow//pos-to-flow-location (pos)
   "Returns a list of (line col) for pos in the current buffer."
@@ -103,7 +121,7 @@
   "Calls flow to get the definition location of the thing at pos, returns the result."
   (let* ((loc (jsx-flow//pos-to-flow-location pos))
          (filename (buffer-file-name)))
-    (apply #'jsx-flow//json-flow-call "get-def" filename loc)))
+    (apply #'jsx-flow//json-call-flow-on-current-buffer "get-def" filename loc)))
 
 (defun jsx-flow//show-flow-loc (loc)
   "Takes a flow location info and shows it."
@@ -126,19 +144,19 @@
   "Calls flow to get all refs of the thing at pos, returning the result."
   (let ((loc (jsx-flow//pos-to-flow-location pos))
         (filename (buffer-file-name)))
-    (apply #'jsx-flow//json-flow-call "find-refs" filename loc)))
+    (apply #'jsx-flow//json-call-flow-on-current-buffer "find-refs" filename loc)))
 
 (defun jsx-flow//type-at-pos-async (result-handler pos)
   "Calls flow to get the type at pos asynchronously; passes the result to result-handler."
   (let* ((loc (jsx-flow//pos-to-flow-location pos))
          (filename (buffer-file-name)))
-    (apply #'jsx-flow//json-flow-call-async result-handler "type-at-pos" "--path" filename loc)))
+    (apply #'jsx-flow//json-call-flow-on-current-buffer-async result-handler "type-at-pos" "--path" filename loc)))
 
 (defun jsx-flow//type-at-pos (pos)
   "Calls flow to get the type at pos synchronously, returning the result."
   (let* ((loc (jsx-flow//pos-to-flow-location pos))
          (filename (buffer-file-name)))
-    (apply #'jsx-flow//json-flow-call "type-at-pos" "--path" filename loc)))
+    (apply #'jsx-flow//json-call-flow-on-current-buffer "type-at-pos" "--path" filename loc)))
 
 (defun jsx-flow//ellipsize (s max-len)
   (if (<= (length s) max-len)
@@ -669,7 +687,7 @@
 (defun jsx-flow//fetch-completion-json ()
   (let* ((loc (jsx-flow//pos-to-flow-location (point)))
          (filename (buffer-file-name)))
-    (jsx-flow//json-flow-call "autocomplete" filename (car loc) (cadr loc))))
+    (jsx-flow//json-call-flow-on-current-buffer "autocomplete" filename (car loc) (cadr loc))))
 
 (defun jsx-flow//make-completion-candidate (candidate)
   (let ((name (cdr (assoc 'name candidate)))
@@ -714,7 +732,7 @@
 ;; flycheck
 
 (with-eval-after-load 'flycheck
-  (defun jsx-flow//fc-convert-error (error checker counter)
+  (defun jsx-flow//fc-convert-error (error checker counter buffer)
     "Return a list of errors from ERROR."
     (let* ((msg-parts (cdr (assoc 'message error)))
            (first-part (elt msg-parts 0))
@@ -723,7 +741,7 @@
            (line (cdr (assoc 'line first-part)))
            (col  (cdr (assoc 'start first-part)))
            (desc (--reduce (format "%s\n%s" acc it) (--map (cdr (assoc 'descr it)) msg-parts))))
-      (when (string= file (buffer-file-name))
+      (when (string= file (buffer-file-name buffer))
         (list (flycheck-error-new-at line col level desc :checker checker :id counter)))))
 
   (defun jsx-flow//parse-status-errors (json checker buffer)
@@ -733,12 +751,12 @@
       (-mapcat
        (lambda (err)
          (setq counter (1+ counter))
-         (jsx-flow//fc-convert-error err checker (number-to-string counter)))
+         (jsx-flow//fc-convert-error err checker (number-to-string counter) buffer))
        errors)))
 
   (defun jsx-flow//check-flow (checker report)
     (let ((buffer (current-buffer)))
-      (jsx-flow//json-flow-call-async
+      (jsx-flow//json-call-flow-async
        (lambda (status)
          (let ((errors (jsx-flow//parse-status-errors status checker buffer)))
            (funcall report 'finished errors)))
@@ -819,7 +837,7 @@
          (jsx-flow//jump-over-jsx-attribute-value limit)
          result)))))
 
-(defun jsx-flow//jump-over-jsx-attribute-value (limit)
+(defun jsx-flow//jump-over-jsx-attribute-value (_limit)
   (skip-syntax-forward " ")
   (when (= (following-char) ?=)
     (forward-char 1)
@@ -961,7 +979,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
       (indent-line-to (jsx-flow//proper-indentation parse-status path))
       (when (> offset 0) (forward-char offset)))))
 
-(defun jsx-flow//proper-indentation (parse-status node-path)
+(defun jsx-flow//proper-indentation (parse-status _node-path)
   (save-excursion
     (back-to-indentation)
     (cond
@@ -1024,7 +1042,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
 
 (defvar jsx-flow--parse-timer nil)
 
-(defun jsx-flow//after-change (beg end replaced-len)
+(defun jsx-flow//after-change (beg _end _replaced-len)
   ;; invalidate AST from beg to end of file
   (when (or (null jsx-flow--ast-invalid-from) (< beg jsx-flow--ast-invalid-from))
     (setq jsx-flow--ast-invalid-from beg)))
