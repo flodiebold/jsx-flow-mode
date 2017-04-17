@@ -34,6 +34,11 @@
   "Face for JSX attributes."
   :group 'jsx-flow-faces)
 
+(defface jsx-flow-untyped-face
+  '((t :inherit diff-refine-removed))
+  "Face used to highlight untyped expressions."
+  :group 'jsx-flow-faces)
+
 ;; utils
 (defun assq-recursive (alist &rest keys)
   "Recursively find KEYs in ALIST."
@@ -309,6 +314,35 @@
     (jsx-flow//call-flow-on-current-buffer-async
      (lambda (data)
        (jsx-flow//receive-ast data invalid-from)) "ast")))
+
+;; flow coverage
+(defvar-local jsx-flow-type-coverage t)
+(defvar-local jsx-flow--coverage nil)
+
+(defun jsx-flow//add-untyped-property (loc)
+  (let ((beg (jsx-flow//flow-offset-to-pos (assq-recursive loc 'start 'offset)))
+        (end (jsx-flow//flow-offset-to-pos (assq-recursive loc 'end 'offset))))
+    (put-text-property beg end 'untyped t)))
+
+(defun jsx-flow//coverage-propertize ()
+  (with-silent-modifications
+    (mapc #'jsx-flow//add-untyped-property (alist-get 'uncovered_locs jsx-flow--coverage))))
+
+(defun jsx-flow//do-coverage ()
+  "Calls flow to get the type coverage and stores it in jsx-flow--coverage."
+  (jsx-flow//json-call-flow-async
+   (lambda (data)
+     (setq jsx-flow--coverage (alist-get 'expressions data))
+     (jsx-flow//coverage-propertize)
+     (font-lock-flush))
+   "coverage" (buffer-file-name)))
+
+(defun jsx-flow/toggle-type-coverage ()
+  (interactive)
+  (setq jsx-flow-type-coverage (not jsx-flow-type-coverage))
+  (if jsx-flow-type-coverage
+      (jsx-flow//do-coverage)
+    (font-lock-flush)))
 
 ;; AST functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -888,6 +922,15 @@
     ('var 'font-lock-variable-name-face)
     ('type 'font-lock-type-face)))
 
+(defun jsx-flow//find-coverage-prop (limit)
+  (when jsx-flow-type-coverage
+    (let ((beg (text-property-not-all (point) limit 'untyped nil)))
+      (when beg
+        (let ((end (next-single-property-change beg 'untyped nil limit)))
+          (goto-char end)
+          (set-match-data (list beg end))
+          t)))))
+
 (defconst jsx-flow--font-lock-keywords-2
   `((,jsx-flow--keyword-re . 'font-lock-keyword-face)
     (,jsx-flow--declare-keyword-re (1 'font-lock-keyword-face))
@@ -930,7 +973,8 @@
 
 (defconst jsx-flow--font-lock-keywords-ast
   `((jsx-flow//find-ast-prop . (0 (jsx-flow//determine-ast-face)))
-    ,@jsx-flow--font-lock-keywords-2))
+    ,@jsx-flow--font-lock-keywords-2
+    (jsx-flow//find-coverage-prop . (0 'jsx-flow-untyped-face prepend))))
 
 (defconst jsx-flow-mode-syntax-table js-mode-syntax-table)
 
@@ -1100,6 +1144,10 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   (setq jsx-flow--ast-invalid-from (point-min))
   (jsx-flow//do-parse)
   (add-hook 'after-change-functions #'jsx-flow//after-change t t)
+
+  (when jsx-flow-type-coverage
+    (jsx-flow//do-coverage))
+  (add-hook 'after-save-hook #'jsx-flow//do-coverage)
 
   (when (null jsx-flow--parse-timer)
     (setq jsx-flow--parse-timer

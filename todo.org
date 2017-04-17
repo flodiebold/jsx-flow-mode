@@ -31,6 +31,8 @@ https://github.com/estree/estree
  - [X] declare class/module/...
  - [X] import/export type
  - [X] nullable / optional types
+* DONE display type coverage
+  CLOSED: [2017-04-17 Mo 21:03]
 * better coloring
 ** DONE jsx coloring
    CLOSED: [2017-04-11 Di 22:19]
