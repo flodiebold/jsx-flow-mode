@@ -63,7 +63,7 @@
   "Calls flow with args on the current buffer, returns the result."
   (let* ((buf (generate-new-buffer "*flow*")))
     (unwind-protect
-        (let* ((result (apply 'call-process-region (point-min) (point-max) "flow" nil buf nil args))
+        (let* ((result (apply 'call-process-region (point-min) (point-max) "flow" nil (list buf nil) nil args))
                (output (with-current-buffer buf (buffer-string))))
           (when (= result 0)
             output))
@@ -71,48 +71,45 @@
 
 (defun jsx-flow//call-flow-on-current-buffer-async (result-handler &rest args)
   "Calls flow with args on the current buffer asynchronously; passes the result to result-handler."
-  (let* ((buf (generate-new-buffer "*flow*"))
-         (process (apply #'start-process "flow" buf "flow" args)))
-    (set-process-sentinel process
-                          (lambda (process _event)
-                            (when (equal 'exit (process-status process))
-                              (let ((output (with-current-buffer (process-buffer process) (buffer-string))))
-                                (kill-buffer (process-buffer process))
-                                (with-demoted-errors "jsx-flow: error in flow result handler: %s"
-                                  (funcall result-handler output))))))
+  (let* ((process (apply #'jsx-flow//call-flow-async result-handler args)))
     (when (process-live-p process)
       (with-demoted-errors "jsx-flow: error calling flow: %s"
         (process-send-region process (point-min) (point-max))
-        (process-send-eof process)))))
+        (process-send-eof process)))
+    process))
 
 (defun jsx-flow//call-flow-async (result-handler &rest args)
   "Calls flow with args asynchronously; passes the result to result-handler."
   (let* ((buf (generate-new-buffer "*flow*"))
-         (process (apply #'start-process "flow" buf "flow" args)))
+         (stderr (generate-new-buffer "*flow-error*"))
+         (process (make-process :name "flow" :buffer buf :command (cons "flow" args)
+                                :stderr stderr)))
     (set-process-sentinel process
                           (lambda (process _event)
                             (when (equal 'exit (process-status process))
                               (let ((output (with-current-buffer (process-buffer process) (buffer-string))))
                                 (kill-buffer (process-buffer process))
+                                (kill-buffer stderr)
                                 (with-demoted-errors "jsx-flow: error in flow result handler: %s"
-                                  (funcall result-handler output))))))))
+                                  (funcall result-handler output))))))
+    process))
 
 (defun jsx-flow//json-call-flow-on-current-buffer (&rest args)
   "Calls flow on the current buffer passing --json, parses the result."
-  (let* ((args (append args '("--json")))
+  (let* ((args (append args '("--json" "--quiet")))
          (output (apply #'jsx-flow//call-flow-on-current-buffer args)))
     (when output
       (json-read-from-string output))))
 
 (defun jsx-flow//json-call-flow-on-current-buffer-async (result-handler &rest args)
   "Calls flow on the current buffer passing --json asynchronously; parses the result and gives it to result-handler."
-  (let ((args (append args '("--json")))
+  (let ((args (append args '("--json" "--quiet")))
         (handler (lambda (output) (funcall result-handler (json-read-from-string output)))))
     (apply #'jsx-flow//call-flow-on-current-buffer-async handler args)))
 
 (defun jsx-flow//json-call-flow-async (result-handler &rest args)
   "Calls flow, passing --json asynchronously; parses the result and gives it to result-handler."
-  (let ((args (append args '("--json")))
+  (let ((args (append args '("--json" "--quiet")))
         (handler (lambda (output) (funcall result-handler (json-read-from-string output)))))
     (apply #'jsx-flow//call-flow-async handler args)))
 

@@ -68,6 +68,9 @@ also keywords and 'strings'
  - multimethods?
 *** TODO don't re-propertize after syntax errors
  - i.e. choose position of syntax error, not point-max, as limit
+* TODO fix indentation breaking on advanced flow features
+ - exact objects {| |}
+ - variance sigils -x, +x
 * tests
 ** TODO write tests for regexes
 ** TODO test coloring using faceup
@@ -77,6 +80,9 @@ also keywords and 'strings'
   - add tests that highlight the fixtures and compare
 * completion improvements
 ** TODO complete JSX attributes immediately
+** TODO fuzzy completion
+* TODO handle JSX member expressions
+i.e. <Foo.Bar />
 * error checking improvements
 ** TODO list all flow errors (in next-error buffer)
   - set next-error-last-buffer?
@@ -93,6 +99,7 @@ also keywords and 'strings'
 * JSX editing
 ** TODO closing jsx tags
 ** TODO self-closing to pair by inserting >
+** TODO pair to self-closing by deleting >
 ** TODO automatic newline insertion between JSX tags
   - look at electric-layout-rules
 ** TODO fill & autofill for JSX
@@ -105,6 +112,7 @@ also keywords and 'strings'
 * TODO use flow binary from node modules
 * TODO use eslint from node modules
 * snippets
+** TODO enable snippets from js-mode
  - const, let
  - function
  - class
@@ -124,16 +132,26 @@ also keywords and 'strings'
 ** TODO auto-require/import
 * refactorings
  - use prettier to print AST for these (at least the more complicated ones)
+ - or consider recast
 ** TODO rename local
  - [ ] handle patterns & object shorthand
  - [ ] handle exports
 ** TODO rename exported
 ** TODO inline local
 ** TODO extract local
+ - for JSX, too
 ** TODO extract parameter
 ** TODO extract function
+** TODO extract stateless component from JSX
+** TODO transform stateless component to class and back
 * quick-fixes for eslint errors
 ** TODO eslint --fix integration
+* performance
 * bugs
 ** TODO smartparens prevents deleting first character of JSX text
 ** TODO smartparens can't match delimiters in template literal
+** TODO clean up coverage props before setting new ones
+** TODO writing a comment at the top of the file can cause the whole file to be marked as regex
+** TODO " or ' in JSX text breaks coloring
+** DONE don't parse stderr output from flow
+   CLOSED: [2017-04-18 Di 21:12]
