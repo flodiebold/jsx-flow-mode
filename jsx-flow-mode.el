@@ -323,6 +323,7 @@
 
 (defun jsx-flow//coverage-propertize ()
   (with-silent-modifications
+    (remove-list-of-text-properties (point-min) (point-max) '(untyped))
     (mapc #'jsx-flow//add-untyped-property (alist-get 'uncovered_locs jsx-flow--coverage))))
 
 (defun jsx-flow//do-coverage ()
