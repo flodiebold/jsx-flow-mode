@@ -96,20 +96,20 @@
 
 (defun jsx-flow//json-call-flow-on-current-buffer (&rest args)
   "Calls flow on the current buffer passing --json, parses the result."
-  (let* ((args (append args '("--json" "--quiet")))
+  (let* ((args (append args '("--json" "--quiet" "--ignore-version")))
          (output (apply #'jsx-flow//call-flow-on-current-buffer args)))
     (when output
       (json-read-from-string output))))
 
 (defun jsx-flow//json-call-flow-on-current-buffer-async (result-handler &rest args)
   "Calls flow on the current buffer passing --json asynchronously; parses the result and gives it to result-handler."
-  (let ((args (append args '("--json" "--quiet")))
+  (let ((args (append args '("--json" "--quiet" "--ignore-version")))
         (handler (lambda (output) (funcall result-handler (json-read-from-string output)))))
     (apply #'jsx-flow//call-flow-on-current-buffer-async handler args)))
 
 (defun jsx-flow//json-call-flow-async (result-handler &rest args)
   "Calls flow, passing --json asynchronously; parses the result and gives it to result-handler."
-  (let ((args (append args '("--json" "--quiet")))
+  (let ((args (append args '("--json" "--quiet" "--ignore-version")))
         (handler (lambda (output) (funcall result-handler (json-read-from-string output)))))
     (apply #'jsx-flow//call-flow-async handler args)))
 
@@ -192,6 +192,7 @@
 (defvar jsx-flow--ast nil
   "The AST from flow.")
 
+(defvar-local jsx-flow--parsing-process nil)
 (defvar-local jsx-flow--ast-invalid-from nil)
 
 (defvar-local jsx-flow-ast-hook nil
@@ -305,12 +306,19 @@
 
 (defun jsx-flow//do-parse ()
   "Calls flow to get the AST and stores it in jsx-flow--ast."
-  ;; (message "do-parse")
+  (let ((inhibit-message t))
+    (message "do-parse %s" jsx-flow--ast-invalid-from))
   (let ((invalid-from jsx-flow--ast-invalid-from))
     (setq jsx-flow--ast-invalid-from nil)
-    (jsx-flow//call-flow-on-current-buffer-async
-     (lambda (data)
-       (jsx-flow//receive-ast data invalid-from)) "ast")))
+    (when jsx-flow--parsing-process
+      (let ((inhibit-message t))
+        (message "parse in progress, canceling"))
+      (kill-process jsx-flow--parsing-process))
+    (setq jsx-flow--parsing-process
+          (jsx-flow//call-flow-on-current-buffer-async
+           (lambda (data)
+             (setq jsx-flow--parsing-process nil)
+             (jsx-flow//receive-ast data invalid-from)) "ast"))))
 
 ;; flow coverage
 (defvar-local jsx-flow-type-coverage t)
@@ -1149,7 +1157,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
 
   (when (null jsx-flow--parse-timer)
     (setq jsx-flow--parse-timer
-          (run-with-idle-timer 0.2 t
+          (run-with-idle-timer 0.4 t
                                (lambda ()
                                  (when jsx-flow--ast-invalid-from
                                    (jsx-flow//do-parse))))))
