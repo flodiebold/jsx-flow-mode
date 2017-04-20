@@ -68,6 +68,7 @@ also keywords and 'strings'
  - multimethods?
 *** TODO don't re-propertize after syntax errors
  - i.e. choose position of syntax error, not point-max, as limit
+*** TODO color types in import type with type color
 * TODO fix indentation breaking on advanced flow features
  - exact objects {| |}
  - variance sigils -x, +x
@@ -80,6 +81,7 @@ also keywords and 'strings'
   - add tests that highlight the fixtures and compare
 * completion improvements
 ** TODO complete JSX attributes immediately
+** TODO complete module paths in require / import
 ** TODO fuzzy completion
 * TODO handle JSX member expressions
 i.e. <Foo.Bar />
@@ -111,6 +113,8 @@ i.e. <Foo.Bar />
 * TODO update Cask file etc.
 * TODO use flow binary from node modules
 * TODO use eslint from node modules
+* Missing flow AST elements
+** TODO DeclareModuleExports
 * snippets
 ** TODO enable snippets from js-mode
  - const, let
@@ -147,11 +151,15 @@ i.e. <Foo.Bar />
 * quick-fixes for eslint errors
 ** TODO eslint --fix integration
 * performance
+** TODO cancel old parse process when the buffer is invalidated before it's done
 * bugs
 ** TODO smartparens prevents deleting first character of JSX text
 ** TODO smartparens can't match delimiters in template literal
 ** TODO clean up coverage props before setting new ones
 ** TODO writing a comment at the top of the file can cause the whole file to be marked as regex
 ** TODO " or ' in JSX text breaks coloring
+** TODO coloring sometimes doesn't work on open
+** TODO buffer *flow-error* has a running process, kill it? y/n
+** TODO react component proptype flow errors shown in the wrong place
 ** DONE don't parse stderr output from flow
    CLOSED: [2017-04-18 Di 21:12]
