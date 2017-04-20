@@ -83,7 +83,8 @@ also keywords and 'strings'
 ** TODO complete JSX attributes immediately
 ** TODO complete module paths in require / import
 ** TODO fuzzy completion
-* TODO handle JSX member expressions
+* DONE handle JSX member expressions
+  CLOSED: [2017-04-20 Do 20:45]
 i.e. <Foo.Bar />
 * error checking improvements
 ** TODO list all flow errors (in next-error buffer)
@@ -151,11 +152,13 @@ i.e. <Foo.Bar />
 * quick-fixes for eslint errors
 ** TODO eslint --fix integration
 * performance
-** TODO cancel old parse process when the buffer is invalidated before it's done
+** DONE cancel old parse process when the buffer is invalidated before it's done
+   CLOSED: [2017-04-20 Do 20:40]
 * bugs
 ** TODO smartparens prevents deleting first character of JSX text
 ** TODO smartparens can't match delimiters in template literal
-** TODO clean up coverage props before setting new ones
+** DONE clean up coverage props before setting new ones
+   CLOSED: [2017-04-20 Do 20:40]
 ** TODO writing a comment at the top of the file can cause the whole file to be marked as regex
 ** TODO " or ' in JSX text breaks coloring
 ** TODO coloring sometimes doesn't work on open

@@ -52,11 +52,12 @@
   "column number at pos"
   (save-excursion (goto-char pos) (current-column)))
 
-(defmacro jsx-flow|measure-time (&rest body)
+(defmacro jsx-flow|measure-time (name &rest body)
   "Measure the time it takes to evaluate BODY."
   `(let* ((time (current-time))
           (result ,@body))
-     (message "%.06f" (float-time (time-since time)))
+     (let ((inhibit-message t))
+       (message "%s took %.06f" name (float-time (time-since time))))
      result))
 
 (defun jsx-flow//call-flow-on-current-buffer (&rest args)
@@ -293,7 +294,8 @@
 (defun jsx-flow//receive-ast (data invalid-from)
   "Handler for the flow AST call."
   ;; ignore ast if it's already out of date
-  ;; TODO: could use the part up to the new invalid-from
+  ;; (let ((inhibit-message t))
+  ;;   (message "receive-ast %s" invalid-from))
   (unless jsx-flow--ast-invalid-from
     (let ((ast (json-read-from-string data)))
       (setq jsx-flow--ast ast)
@@ -639,8 +641,8 @@
      '(expression))
     (`JSXSpreadAttribute
      '(argument))
-    (`JSXNamespacedName
-     '(namespace name))))
+    (`JSXMemberExpression
+     '(object property))))
 
 (defun jsx-flow//visit-children (fun ast-node)
   "Runs fun on each of ast-node's children in turn."
@@ -857,10 +859,10 @@
   "Regular expression matching any future reserved words in JavaScript.")
 
 (defconst jsx-flow--opening-element-re
-  "\\(<\\)\\([[:alnum:]]+\\)\\([[:space:]\n]+[[:alnum:]/]\\|>\\)")
+  "\\(<\\)\\([[:alnum:].]+\\)\\([[:space:]\n]+[[:alnum:]/]\\|>\\)")
 
 (defconst jsx-flow--closing-element-re
-  "\\(</\\)\\([[:alnum:]]+\\)\\(>\\)")
+  "\\(</\\)\\([[:alnum:].]+\\)\\(>\\)")
 
 (defconst jsx-flow--jsx-attribute-re
   "\\([[:alnum:]-]+\\)\\|[{/>]")
