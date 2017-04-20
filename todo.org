@@ -80,8 +80,10 @@ also keywords and 'strings'
     highlighting to finish, save faceup file
   - add tests that highlight the fixtures and compare
 * completion improvements
+** DONE complete module paths in require / import
+   CLOSED: [2017-04-20 Do 22:14]
 ** TODO complete JSX attributes immediately
-** TODO complete module paths in require / import
+** TODO better matching for requires
 ** TODO fuzzy completion
 * DONE handle JSX member expressions
   CLOSED: [2017-04-20 Do 20:45]
@@ -133,6 +135,7 @@ i.e. <Foo.Bar />
  - toggle automatic run
  - update snapshots
 ** TODO coverage display
+** TODO file / test toggling
 * quick-fixes for flow errors
 ** TODO auto-require/import
 * refactorings
@@ -154,6 +157,8 @@ i.e. <Foo.Bar />
 * performance
 ** DONE cancel old parse process when the buffer is invalidated before it's done
    CLOSED: [2017-04-20 Do 20:40]
+* code refactoring
+** TODO split up into multiple files
 * bugs
 ** TODO smartparens prevents deleting first character of JSX text
 ** TODO smartparens can't match delimiters in template literal

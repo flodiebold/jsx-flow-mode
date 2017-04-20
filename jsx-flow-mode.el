@@ -9,6 +9,7 @@
 (require 'json)
 (require 'js)
 (require 'dash)
+(require 's)
 
 (defgroup jsx-flow-faces nil
   "Faces for jsx-flow-mode."
@@ -771,6 +772,49 @@
     (location (cons (get-text-property 0 'path arg)
                     (get-text-property 0 'line arg)))))
 
+;; module path completion
+(defconst jsx-flow--require-re
+  "\\(require\\s *(\\s *\\|from\\s +\\)[\"']")
+
+(defun jsx-flow//grab-module-import-prefix ()
+  (let* ((parse-status (syntax-ppss))
+         (in-string (nth 3 parse-status))
+         (string-start (nth 8 parse-status))
+         (old-point (point)))
+    (when in-string
+      (save-excursion
+        (goto-char (1+ string-start))
+        (when (looking-back jsx-flow--require-re (line-beginning-position))
+          (buffer-substring-no-properties (1+ string-start) old-point))))))
+
+(defun jsx-flow//find-possible-imports (s)
+  ;; TODO handle case where we're not in a project or projectile isn't even installed
+  (when (projectile-project-p)
+    (let ((root (projectile-project-root))
+          (module-dir (file-name-directory (buffer-file-name))))
+      (->> (projectile-current-project-files)
+           ;; TODO make this more flexible
+           (--filter (s-ends-with? ".js" it))
+           (--map (file-relative-name (expand-file-name it root)
+                                      module-dir))
+           (--map (if (s-starts-with? "." it)
+                      it
+                    (concat "./" it)))
+           (--map (s-chop-suffix ".js" it))
+           (--filter (s-contains? s it t))))))
+
+(defun company-jsx-flow-import-backend (command &optional arg &rest ignored)
+  (interactive (list 'interactive))
+  (case command
+    (interactive (company-begin-backend 'company-jsx-flow-import-backend))
+    (prefix (and (eq major-mode 'jsx-flow-mode)
+                 (when-let ((pre (jsx-flow//grab-module-import-prefix)))
+                   (cons pre t))))
+    (no-cache t)
+    (candidates
+     (let* ((candidates (jsx-flow//find-possible-imports arg)))
+       candidates))))
+
 ;; flycheck
 
 (with-eval-after-load 'flycheck
@@ -1165,7 +1209,8 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
                                    (jsx-flow//do-parse))))))
 
   ;; company
-  (add-to-list (make-local-variable 'company-backends) 'company-jsx-flow-backend)
+  (add-to-list (make-local-variable 'company-backends) '(company-jsx-flow-backend :with company-yasnippet))
+  (add-to-list (make-local-variable 'company-backends) 'company-jsx-flow-import-backend)
 
   (flycheck-mode 1))
 
