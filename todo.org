@@ -83,7 +83,8 @@ also keywords and 'strings'
 ** DONE complete module paths in require / import
    CLOSED: [2017-04-20 Do 22:14]
 ** TODO complete JSX attributes immediately
-** TODO better matching for requires
+** DONE better matching for requires
+   CLOSED: [2017-04-21 Fr 22:49]
 ** TODO fuzzy completion
 * DONE handle JSX member expressions
   CLOSED: [2017-04-20 Do 20:45]

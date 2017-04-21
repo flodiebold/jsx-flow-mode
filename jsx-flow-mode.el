@@ -774,7 +774,9 @@
 
 ;; module path completion
 (defconst jsx-flow--require-re
-  "\\(require\\s *(\\s *\\|from\\s +\\)[\"']")
+  "\\(require\\s *(\\s *\\|from\\s +\\|jest.\\(mock\\|dontMock\\|unmock\\|setMock\\)\\s *(\\s *\\)[\"']")
+
+(defvar-local jsx-flow--module-completion-cache nil)
 
 (defun jsx-flow//grab-module-import-prefix ()
   (let* ((parse-status (syntax-ppss))
@@ -787,21 +789,45 @@
         (when (looking-back jsx-flow--require-re (line-beginning-position))
           (buffer-substring-no-properties (1+ string-start) old-point))))))
 
+(defun jsx-flow//get-all-file-modules ()
+  (let ((root (projectile-project-root))
+        (module-dir (file-name-directory (buffer-file-name))))
+    (->> (projectile-current-project-files)
+         ;; TODO make this more flexible
+         (--filter (and (s-ends-with? ".js" it)
+                        (not (s-contains? "node_modules" it)) ;; avoid node modules
+                        (not (s-starts-with? "." (file-name-base it)))))
+         (--map (file-relative-name (expand-file-name it root)
+                                    module-dir))
+         (--map (if (s-starts-with? "." it)
+                    it
+                  (concat "./" it)))
+         (--map (s-chop-suffix ".js" it)))))
+
+(defun jsx-flow//get-all-node-modules ()
+  (when-let ((package-json-dir (locate-dominating-file (buffer-file-name) "package.json")))
+    (let* ((package-data (json-read-file (concat package-json-dir "/package.json")))
+           (deps (alist-get 'dependencies package-data))
+           (dev-deps (alist-get 'devDependencies package-data)))
+      (--map (symbol-name (car it))
+             (append deps dev-deps)))))
+
 (defun jsx-flow//find-possible-imports (s)
   ;; TODO handle case where we're not in a project or projectile isn't even installed
   (when (projectile-project-p)
-    (let ((root (projectile-project-root))
-          (module-dir (file-name-directory (buffer-file-name))))
-      (->> (projectile-current-project-files)
-           ;; TODO make this more flexible
-           (--filter (s-ends-with? ".js" it))
-           (--map (file-relative-name (expand-file-name it root)
-                                      module-dir))
-           (--map (if (s-starts-with? "." it)
-                      it
-                    (concat "./" it)))
-           (--map (s-chop-suffix ".js" it))
-           (--filter (s-contains? s it t))))))
+    (unless jsx-flow--module-completion-cache
+       (setq jsx-flow--module-completion-cache
+             (append
+              (jsx-flow//get-all-modules)
+              (jsx-flow//get-all-node-modules))))
+    (->> jsx-flow--module-completion-cache
+         (--filter (or (s-contains? s (file-name-base it) t)
+                       (s-starts-with? s it))))))
+
+(defun jsx-flow/clear-module-cache ()
+  "Clears the module cache for completion."
+  (interactive)
+  (setq jsx-flow--module-completion-cache nil))
 
 (defun company-jsx-flow-import-backend (command &optional arg &rest ignored)
   (interactive (list 'interactive))
