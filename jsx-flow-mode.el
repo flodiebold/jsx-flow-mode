@@ -82,10 +82,13 @@
 
 (defun jsx-flow//call-flow-async (result-handler &rest args)
   "Calls flow with args asynchronously; passes the result to result-handler."
-  (let* ((buf (generate-new-buffer "*flow*"))
+  (let* ((buffer (current-buffer))
+         (buf (generate-new-buffer "*flow*"))
          (stderr (generate-new-buffer "*flow-error*"))
+         (stderr-pipe (make-pipe-process :name "flow-error" :buffer stderr
+                                         :noquery t))
          (process (make-process :name "flow" :buffer buf :command (cons "flow" args)
-                                :stderr stderr)))
+                                :stderr stderr-pipe :noquery t)))
     (set-process-sentinel process
                           (lambda (process _event)
                             (when (equal 'exit (process-status process))
@@ -93,7 +96,8 @@
                                 (kill-buffer (process-buffer process))
                                 (kill-buffer stderr)
                                 (with-demoted-errors "jsx-flow: error in flow result handler: %s"
-                                  (funcall result-handler output))))))
+                                  (with-current-buffer buffer
+                                    (funcall result-handler output)))))))
     process))
 
 (defun jsx-flow//json-call-flow-on-current-buffer (&rest args)
@@ -313,7 +317,8 @@
     (message "do-parse %s" jsx-flow--ast-invalid-from))
   (let ((invalid-from jsx-flow--ast-invalid-from))
     (setq jsx-flow--ast-invalid-from nil)
-    (when jsx-flow--parsing-process
+    (when (and jsx-flow--parsing-process
+               (process-live-p jsx-flow--parsing-process))
       (let ((inhibit-message t))
         (message "parse in progress, canceling"))
       (kill-process jsx-flow--parsing-process))
