@@ -27,10 +27,11 @@
     (while (looking-at "\\([^\n]*\\)\n")
       (let ((msg-string (match-string-no-properties 1)))
         (delete-region (match-beginning 0) (match-end 0))
-        (message "jest message: %s" msg-string)
+        (let ((inhibit-message t))
+          (message "jest message: %s" msg-string))
         (with-demoted-errors "jest response handler error: %s"
           (let ((data (json-read-from-string msg-string)))
-            (run-hook-with-args 'jest-server-message-hook data)))))))
+            (run-hook-with-args 'jest-server-message-hook process data)))))))
 
 (defun jest//server-process-sentinel (process event)
   (unless (process-live-p process)
@@ -97,17 +98,56 @@
   (jest//send-message `((command . "runTests")
                         (files . ,(vconcat (--map (file-truename it) files))))))
 
-(defun jest//run-current-test-file ()
+(defun jest/run-current-test-file ()
+  (interactive)
   (jest//run-test-files (list (buffer-file-name))))
 
 (defun jest/get-event (data)
   (alist-get 'event data))
 
-(defun jest//handle-pong (data)
+(defun jest//server-root (process)
+  (process-get process 'root))
+
+(defun jest//create-test-results-buffer (root)
+  (generate-new-buffer "*jest results*"))
+
+(defun jest//get-test-results-buffer (process)
+  (or (process-get process 'test-results-buffer)
+      (let* ((root (jest//server-root process))
+             (buffer (jest//create-test-results-buffer root)))
+        (process-put process 'test-results-buffer buffer)
+        buffer)))
+
+(defun jest//handle-pong (server data)
   (when (string-equal (jest/get-event data) "pong")
     (message "got ponged!!")))
 
-(defvar jest-server-message-hook (list #'jest//handle-pong))
+(defun jest//handle-test-result (server data)
+  (when (string-equal (jest/get-event data) "testResult")
+    (let ((test-file-path (alist-get 'testFilePath data))
+          (test-results (alist-get 'testResults data))
+          (test-buffer (jest//get-test-results-buffer server)))
+      (save-excursion
+        (with-current-buffer test-buffer
+          (goto-char (point-max))
+          (insert test-file-path)
+          (newline)
+          (mapc (lambda (result)
+                  (insert (alist-get 'fullName result) " ")
+                  (let ((failures (alist-get 'failureMessages result)))
+                    (if (seq-empty-p failures)
+                        (insert "OK")
+                      (progn
+                        (insert "FAIL")
+                        (mapc (lambda (failure)
+                                (newline)
+                                (insert failure))
+                              failures)))
+                    (newline)))
+                test-results)))
+      )))
+
+(defvar jest-server-message-hook (list #'jest//handle-pong #'jest//handle-test-result))
 
 
 (provide 'jest)
