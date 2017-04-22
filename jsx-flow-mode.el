@@ -49,6 +49,9 @@
 
 
 ;; flow stuff
+(defun jsx-flow//is-flow-project? ()
+  (not (null (locate-dominating-file (buffer-file-name) ".flowconfig"))))
+
 (defun jsx-flow//column-number-at-pos (pos)
   "column number at pos"
   (save-excursion (goto-char pos) (current-column)))
@@ -95,9 +98,10 @@
                               (let ((output (with-current-buffer (process-buffer process) (buffer-string))))
                                 (kill-buffer (process-buffer process))
                                 (kill-buffer stderr)
-                                (with-demoted-errors "jsx-flow: error in flow result handler: %s"
+                                (condition-case-unless-debug err
                                   (with-current-buffer buffer
-                                    (funcall result-handler output)))))))
+                                    (funcall result-handler output))
+                                  (error (message "jsx-flow: caught error %s, args were %s" err args)))))))
     process))
 
 (defun jsx-flow//json-call-flow-on-current-buffer (&rest args)
@@ -192,7 +196,8 @@
 (defun jsx-flow/eldoc-show-type-at-point ()
   "Shows type at point."
   (interactive)
-  (jsx-flow//type-at-pos-async #'jsx-flow//eldoc-show-type-info (point))
+  (when (jsx-flow//is-flow-project?)
+    (jsx-flow//type-at-pos-async #'jsx-flow//eldoc-show-type-info (point)))
   nil)
 
 (defvar jsx-flow--ast nil
@@ -344,12 +349,13 @@
 
 (defun jsx-flow//do-coverage ()
   "Calls flow to get the type coverage and stores it in jsx-flow--coverage."
-  (jsx-flow//json-call-flow-async
-   (lambda (data)
-     (setq jsx-flow--coverage (alist-get 'expressions data))
-     (jsx-flow//coverage-propertize)
-     (font-lock-flush))
-   "coverage" (buffer-file-name)))
+  (when (jsx-flow//is-flow-project?)
+    (jsx-flow//json-call-flow-async
+     (lambda (data)
+       (setq jsx-flow--coverage (alist-get 'expressions data))
+       (jsx-flow//coverage-propertize)
+       (font-lock-flush))
+     "coverage" (buffer-file-name))))
 
 (defun jsx-flow/toggle-type-coverage ()
   (interactive)
@@ -872,12 +878,14 @@
        errors)))
 
   (defun jsx-flow//check-flow (checker report)
-    (let ((buffer (current-buffer)))
-      (jsx-flow//json-call-flow-async
-       (lambda (status)
-         (let ((errors (jsx-flow//parse-status-errors status checker buffer)))
-           (funcall report 'finished errors)))
-       "status")))
+    (if (jsx-flow//is-flow-project?)
+        (let ((buffer (current-buffer)))
+          (jsx-flow//json-call-flow-async
+           (lambda (status)
+             (let ((errors (jsx-flow//parse-status-errors status checker buffer)))
+               (funcall report 'finished errors)))
+           "status"))
+      (funcall report 'finished nil)))
 
   (flycheck-define-generic-checker 'javascript-flow
     "A JavaScript syntax and style checker using Flow."

@@ -160,6 +160,7 @@ i.e. <Foo.Bar />
    CLOSED: [2017-04-20 Do 20:40]
 * code refactoring
 ** TODO split up into multiple files
+** TODO switch to hashtables
 * bugs
 ** TODO smartparens prevents deleting first character of JSX text
 ** TODO smartparens can't match delimiters in template literal
