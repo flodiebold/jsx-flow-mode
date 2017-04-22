@@ -9,8 +9,11 @@
 (require 'json)
 (require 'dash)
 (require 's)
+(require 'ht)
 
-(defvar-local jest--server-process nil)
+(defvar jest--servers (ht-create))
+
+(defvar-local jest--root nil)
 
 (defun jest//find-server-script ()
   ;; FIXME
@@ -30,15 +33,25 @@
             (run-hook-with-args 'jest-server-message-hook data)))))))
 
 (defun jest//server-process-sentinel (process event)
-  (message "jest process event: %s" event))
+  (unless (process-live-p process)
+    ;; cleanup
+    (let ((root (process-get process 'root))
+          (stderr (process-get process 'stderr)))
+      (ht-remove! jest--servers root)
+      (kill-buffer (process-buffer process))
+      (when (or (zerop (process-exit-status process))
+                (process-get process 'killed-from-emacs))
+        ;; don't clean up stderr buffer if the process crashed
+        (kill-buffer stderr)))))
 
-(defun jest//start-server-process (cwd)
-  (let* ((cwd (file-truename cwd))
-         (process-environment (cons (concat "NODE_PATH=" cwd "node_modules")
+(defun jest//start-server-process (root)
+  (let* ((process-environment (cons (concat "NODE_PATH=" root "/node_modules")
                                     process-environment))
-         (default-directory cwd)
+         (default-directory root)
          (buf (generate-new-buffer "*jest-server*"))
          (stderr (generate-new-buffer "*jest-server-stderr*"))
+         (stderr-pipe (make-pipe-process :name "jest-error" :buffer stderr
+                                         :noquery t))
          (command (list "node" (jest//find-server-script)))
          (process (make-process :name "jest"
                                 :buffer buf
@@ -46,18 +59,29 @@
                                 :command command)))
     (set-process-filter process #'jest//server-process-filter)
     (set-process-sentinel process #'jest//server-process-sentinel)
+    (process-put process 'stderr stderr)
+    (process-put process 'root root)
     process))
 
-(defun jest//stop-server-process (process)
-  ;; TODO
-  )
+(defun jest//get-root ()
+  (or jest--root
+      (progn
+        (setq jest--root
+              (file-truename (directory-file-name (locate-dominating-file (buffer-file-name) "package.json"))))
+        jest--root)))
 
 (defun jest//get-server ()
-  (or jest--server-process
-      (when-let ((package-json-dir (locate-dominating-file (buffer-file-name) "package.json")))
-        ;; TODO one jest process per package.json...
-        (setq jest--server-process
-              (jest//start-server-process package-json-dir)))))
+  (when-let ((root (jest//get-root)))
+    (or (ht-get jest--servers root)
+        (let ((server (jest//start-server-process root)))
+          (ht-set! jest--servers root server)
+          server))))
+
+(defun jest/kill-server ()
+  (interactive)
+  (when-let ((server (ht-get jest--servers (jest//get-root))))
+    (process-put server 'killed-from-emacs t)
+    (kill-process server)))
 
 (defun jest//send-message-string (msg)
   (process-send-string (jest//get-server) (concat msg "\n")))
@@ -69,9 +93,12 @@
 (defun jest//send-ping ()
   (jest//send-message '((command . "ping"))))
 
-(defun jest//run-current-test-file ()
+(defun jest//run-test-files (files)
   (jest//send-message `((command . "runTests")
-                        (files . [,(file-truename (buffer-file-name))]))))
+                        (files . ,(vconcat (--map (file-truename it) files))))))
+
+(defun jest//run-current-test-file ()
+  (jest//run-test-files (list (buffer-file-name))))
 
 (defun jest/get-event (data)
   (alist-get 'event data))
