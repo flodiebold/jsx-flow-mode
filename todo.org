@@ -116,8 +116,9 @@ i.e. <Foo.Bar />
 ** TODO evil-matchit
 * TODO expand-region support for JSX and other AST constructs
 * TODO update Cask file etc.
-* TODO use flow binary from node modules
-* TODO use eslint from node modules
+* TODO make flow / eslint / prettier / jest binary configurable
++ maybe add command that automatically configures .dir-locals to use the
+  executables from node_modules
 * Missing flow AST elements
 ** TODO DeclareModuleExports
 * snippets
@@ -130,14 +131,18 @@ i.e. <Foo.Bar />
 ** TODO run jest watch in buffer
 ** TODO show errors inline (?)
 ** TODO show snapshot diffs
-** TODO show test results in a nice hierarchical view
+** TODO show all test results in a nice hierarchical view
 ** TODO add commands
  - run tests in buffer
+ - run failed tests
  - run all tests
  - toggle automatic run
  - update snapshots
-** TODO coverage display
+** TODO rerun tests related to saved file
+** TODO coverage overlay
+** TODO list coverage of all files
 ** TODO file / test toggling
+** TODO go to snapshot
 * quick-fixes for flow errors
 ** TODO auto-require/import
 * refactorings
@@ -173,7 +178,4 @@ i.e. <Foo.Bar />
 ** TODO " or ' in JSX text breaks coloring
 ** TODO coloring sometimes doesn't work on open
 ** DONE buffer *flow-error* has a running process, kill it? y/n
-   CLOSED: [2017-08-15 Di 13:56]
-** TODO react component proptype flow errors shown in the wrong place
-** DONE don't parse stderr output from flow
-   CLOSED: [2017-04-18 Di 21:12]
+   CLOSED: [2017-04-22 Sa 10:00]
