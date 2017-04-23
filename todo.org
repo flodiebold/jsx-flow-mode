@@ -133,6 +133,7 @@ i.e. <Foo.Bar />
 ** TODO link stacktraces in results buffer
 ** TODO show 'running' status in results buffer
 ** TODO jump to test file from results buffer
+** TODO fix stacktraces
 ** TODO display number of failed tests in status bar
  - only related files?
 ** TODO show errors inline (?)

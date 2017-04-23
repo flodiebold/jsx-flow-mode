@@ -17,7 +17,7 @@
 
 (defun jest//find-server-script ()
   ;; FIXME
-  "/home/florian/Projekte/privat/jsx-flow-mode/jest-server.js")
+  "/home/florian/Projekte/jsx-flow-mode/jest-server.js")
 
 (defun jest//server-process-filter (process output)
   (with-current-buffer (process-buffer process)
@@ -62,6 +62,10 @@
     (set-process-sentinel process #'jest//server-process-sentinel)
     (process-put process 'stderr stderr)
     (process-put process 'root root)
+    (with-current-buffer buf
+      (setq jest--root root))
+    (with-current-buffer stderr
+      (setq jest--root root))
     process))
 
 (defun jest//get-root ()
@@ -100,7 +104,12 @@
 
 (defun jest/run-current-test-file ()
   (interactive)
-  (jest//run-test-files (list (buffer-file-name))))
+  (jest//run-test-files (list (buffer-file-name)))
+  (jest//display-results-buffer))
+
+(defun jest//display-results-buffer ()
+  (let ((server (jest//get-server)))
+    (switch-to-buffer-other-window (jest//get-test-results-buffer server))))
 
 (defun jest/get-event (data)
   (alist-get 'event data))
@@ -125,7 +134,9 @@
     (current-buffer)))
 
 (defun jest//get-test-results-buffer (process)
-  (or (process-get process 'test-results-buffer)
+  (or (when-let ((buffer (process-get process 'test-results-buffer)))
+        (when (buffer-live-p buffer)
+          buffer))
       (let* ((root (jest//server-root process))
              (buffer (jest//create-test-results-buffer root)))
         (process-put process 'test-results-buffer buffer)
@@ -143,25 +154,44 @@
       (save-excursion
         (with-current-buffer test-buffer
           (let ((inhibit-read-only t))
-            (goto-char (point-max))
-            (insert test-file-path)
-            (newline)
-            (mapc (lambda (result)
-                    (insert (alist-get 'fullName result) " ")
-                    (let ((failures (alist-get 'failureMessages result)))
-                      (if (seq-empty-p failures)
-                          (insert "OK")
-                        (progn
-                          (insert "FAIL")
-                          (mapc (lambda (failure)
-                                  (newline)
-                                  (insert failure))
-                                failures)))
-                      (newline)))
-                  test-results))))
-      )))
+            (let ((transformed (jest//transform-test-results data)))
+              (jest//render-test-results transformed))))))))
 
 (defvar jest-server-message-hook (list #'jest//handle-pong #'jest//handle-test-result))
+
+;; test result transformation
+(cl-defstruct jest-test-result
+  path ancestor-titles title status failure-messages)
+
+(defun vector-to-list (v)
+  (append v nil))
+
+(defun jest//transform-test-result (path data)
+  (make-jest-test-result
+   :path path
+   :ancestor-titles (vector-to-list (alist-get 'ancestorTitles data))
+   :title (alist-get 'title data)
+   :status (intern (alist-get 'status data))
+   :failure-messages (vector-to-list (alist-get 'failureMessages data))))
+
+(defun jest//transform-test-results (data)
+  (let ((path (alist-get 'testFilePath data))
+        (test-results (alist-get 'testResults data)))
+    (--map (jest//transform-test-result path it) test-results)))
+
+;; test result rendering
+(defun jest//render-test-results (data)
+  (goto-char (point-max))
+  (let ((s (with-output-to-string (pp data))))
+    (insert s)))
+
+
+;; sections
+(cl-defstruct jest-section
+  type value start content end hidden)
+
+(defun jest/current-section ()
+  (get-text-property (point) 'jest-section))
 
 
 (provide 'jest)
