@@ -126,12 +126,20 @@ i.e. <Foo.Bar />
  - class
  - render
 * jest watch integration
-** TODO run jest watch in buffer
+** TODO run all tests, list test results in results buffer
+** TODO make test results collapsible
+** TODO update existing results from the same test in results buffer
+** TODO show console output in results buffer
+** TODO link stacktraces in results buffer
+** TODO show 'running' status in results buffer
+** TODO jump to test file from results buffer
+** TODO display number of failed tests in status bar
+ - only related files?
 ** TODO show errors inline (?)
 ** TODO show snapshot diffs
-** TODO show test results in a nice hierarchical view
 ** TODO add commands
  - run tests in buffer
+ - run tests related to file
  - run all tests
  - toggle automatic run
  - update snapshots

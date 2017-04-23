@@ -108,8 +108,21 @@
 (defun jest//server-root (process)
   (process-get process 'root))
 
+(define-derived-mode jest-results-mode special-mode "Jest results"
+  "Mode for the jest results buffer."
+  (buffer-disable-undo)
+  (setq buffer-read-only t)
+  (setq list-buffers-directory (abbreviate-file-name default-directory))
+  (when (bound-and-true-p global-linum-mode)
+    (linum-mode -1))
+  (when (and (fboundp 'nlinum-mode)
+             (bound-and-true-p global-nlinum-mode))
+    (nlinum-mode -1)))
+
 (defun jest//create-test-results-buffer (root)
-  (generate-new-buffer "*jest results*"))
+  (with-current-buffer (generate-new-buffer "*jest results*")
+    (jest-results-mode)
+    (current-buffer)))
 
 (defun jest//get-test-results-buffer (process)
   (or (process-get process 'test-results-buffer)
@@ -129,22 +142,23 @@
           (test-buffer (jest//get-test-results-buffer server)))
       (save-excursion
         (with-current-buffer test-buffer
-          (goto-char (point-max))
-          (insert test-file-path)
-          (newline)
-          (mapc (lambda (result)
-                  (insert (alist-get 'fullName result) " ")
-                  (let ((failures (alist-get 'failureMessages result)))
-                    (if (seq-empty-p failures)
-                        (insert "OK")
-                      (progn
-                        (insert "FAIL")
-                        (mapc (lambda (failure)
-                                (newline)
-                                (insert failure))
-                              failures)))
-                    (newline)))
-                test-results)))
+          (let ((inhibit-read-only t))
+            (goto-char (point-max))
+            (insert test-file-path)
+            (newline)
+            (mapc (lambda (result)
+                    (insert (alist-get 'fullName result) " ")
+                    (let ((failures (alist-get 'failureMessages result)))
+                      (if (seq-empty-p failures)
+                          (insert "OK")
+                        (progn
+                          (insert "FAIL")
+                          (mapc (lambda (failure)
+                                  (newline)
+                                  (insert failure))
+                                failures)))
+                      (newline)))
+                  test-results))))
       )))
 
 (defvar jest-server-message-hook (list #'jest//handle-pong #'jest//handle-test-result))
