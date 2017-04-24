@@ -829,7 +829,7 @@
     (unless jsx-flow--module-completion-cache
        (setq jsx-flow--module-completion-cache
              (append
-              (jsx-flow//get-all-modules)
+              (jsx-flow//get-all-file-modules)
               (jsx-flow//get-all-node-modules))))
     (->> jsx-flow--module-completion-cache
          (--filter (or (s-contains? s (file-name-base it) t)
