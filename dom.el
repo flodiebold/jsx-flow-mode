@@ -31,26 +31,28 @@
 
 (defun dom//mount-list (nodes mounted-nodes key-comparator)
   (dom//sorted-list-merge!
-   (lambda (node mounted-node)
-     (message "merge %s into %s" node mounted-node)
-     (if node
-         (dom//mount-into node mounted-node)
-       (dom//delete-node-contents mounted-node)))
+   #'dom//mount-into
    (lambda (node mounted-node)
      (funcall key-comparator (dom//node-key node) (dom-mounted-node-key mounted-node)))
    (lambda (node) (dom//make-empty-node))
    nodes mounted-nodes))
 
 (defun dom//mount-into (node mounted-node)
-  (message "mount %s into %s" node mounted-node)
   (cl-typecase node
+    (null
+     (dom//delete-node-contents mounted-node)
+     (setf (dom-mounted-node-children mounted-node) nil)
+     (setf (dom-mounted-node-beg mounted-node) (point))
+     (setf (dom-mounted-node-end mounted-node) (point)))
     (string
-     (unless (equal-including-properties (dom//mounted-text mounted-node) node)
+     (let ((old-length (dom//node-length mounted-node)))
        (setf (dom-mounted-node-beg mounted-node) (point))
-       (delete-char (length (dom//mounted-text mounted-node)))
-       (insert node)
-       (setf (dom-mounted-node-end mounted-node) (point))
-       (setf (dom-mounted-node-children mounted-node) node)))
+       (if (equal-including-properties (dom//mounted-text mounted-node) node)
+           (forward-char (length node))
+         (delete-char old-length)
+         (insert node)
+         (setf (dom-mounted-node-children mounted-node) node))
+       (setf (dom-mounted-node-end mounted-node) (point))))
     (dom-node
      (setf (dom-mounted-node-key mounted-node) (dom-node-key node))
      (when (dom//mounted-text mounted-node)
@@ -63,7 +65,6 @@
                             (dom-node-child-key-comparator node)))
      (setf (dom-mounted-node-end mounted-node) (point))))
   (dom//correct-properties node mounted-node)
-  (message "mounted node is now %s" mounted-node)
   (goto-char (dom-mounted-node-end mounted-node)))
 
 (defun dom//node-key (node)

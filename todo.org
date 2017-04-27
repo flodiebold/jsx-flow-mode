@@ -126,13 +126,21 @@ i.e. <Foo.Bar />
  - class
  - render
 * jest watch integration
-** TODO run all tests, list test results in results buffer
+** DONE run all tests in file, list test results in results buffer
+   CLOSED: [2017-04-27 Do 19:07]
+** DONE update existing results from the same test in results buffer
+   CLOSED: [2017-04-27 Do 19:11]
+** TODO give short status on suite level
+** TODO run all tests in project
 ** TODO make test results collapsible
-** TODO update existing results from the same test in results buffer
+** TODO remove test results when the tests don't exist anymore
+** TODO show error messages and stacktraces in results buffer
 ** TODO show console output in results buffer
 ** TODO link stacktraces in results buffer
 ** TODO show 'running' status in results buffer
 ** TODO jump to test file from results buffer
+** TODO rerun tests from results buffer
+** TODO rerun failed tests
 ** TODO fix stacktraces
 ** TODO display number of failed tests in status bar
  - only related files?

@@ -1,6 +1,8 @@
 console.error("NODE_PATH:", process.env.NODE_PATH);
 console.error("cwd:", process.cwd());
 
+// FIXME apparently there's something else to be done, because jest complains about a missing temp file when I don't run jest before this
+
 const { TestRunner, TestWatcher } = require("jest-cli");
 const createHasteContext = require("jest-cli/build/lib/createHasteContext");
 const { readConfig } = require("jest-config");
@@ -79,7 +81,7 @@ class MyReporter extends BaseReporter {
 }
 
 function makeRunner() {
-    const runner = new SilentRunner(hasteContext, config, { maxWorkers: 4 }, () => console.log("startRun"));
+    const runner = new SilentRunner(hasteContext, config, { maxWorkers: 4 }, () => console.error("startRun"));
     runner.addReporter(new MyReporter());
     return runner;
 }

@@ -11,6 +11,8 @@
 (require 's)
 (require 'ht)
 
+(require 'dom)
+
 (defvar jest--servers (ht-create))
 
 (defvar-local jest--root nil)
@@ -146,16 +148,18 @@
   (when (string-equal (jest/get-event data) "pong")
     (message "got ponged!!")))
 
+(defvar-local jest--test-results nil)
+
 (defun jest//handle-test-result (server data)
   (when (string-equal (jest/get-event data) "testResult")
-    (let ((test-file-path (alist-get 'testFilePath data))
-          (test-results (alist-get 'testResults data))
-          (test-buffer (jest//get-test-results-buffer server)))
-      (save-excursion
-        (with-current-buffer test-buffer
-          (let ((inhibit-read-only t))
-            (let ((transformed (jest//transform-test-results data)))
-              (jest//render-test-results transformed))))))))
+    (let* ((test-file-path (alist-get 'testFilePath data))
+           (test-results (alist-get 'testResults data))
+           (test-buffer (jest//get-test-results-buffer server))
+           (transformed (jest//transform-test-results data)))
+      (with-current-buffer test-buffer
+        (unless jest--test-results (setq jest--test-results (ht-create)))
+        (--each transformed (jest//merge-test-result it))
+        (jest//render-test-results-buffer)))))
 
 (defvar jest-server-message-hook (list #'jest//handle-pong #'jest//handle-test-result))
 
@@ -179,11 +183,94 @@
         (test-results (alist-get 'testResults data)))
     (--map (jest//transform-test-result path it) test-results)))
 
+(defun jest//merge-test-result (result)
+  (let ((suite-name (car (jest-test-result-ancestor-titles result))))
+    (unless (ht-contains? jest--test-results suite-name)
+      (ht-set! jest--test-results
+               ;; TODO: is there always an ancestor title?
+               suite-name
+               (ht-create)))
+    (let ((results (ht-get jest--test-results suite-name)))
+      (ht-set! results
+               (jest-test-result-title result)
+               result))))
+
+(defun jest//aggregate-status (tests)
+  (--group-by (jest-test-result-status it) tests))
+
 ;; test result rendering
+(defun jest//render-test-results-buffer ()
+  (save-excursion
+    (let ((inhibit-read-only t))
+      (let ((node (jest//render-test-results jest--test-results)))
+        (goto-char (point-min))
+        (dom/mount node)))))
+
 (defun jest//render-test-results (data)
-  (goto-char (point-max))
-  (let ((s (with-output-to-string (pp data))))
-    (insert s)))
+  (let ((suites (sort (ht-keys data) #'string<)))
+    (dom/make-node
+     :children
+     (--map (dom/make-node
+             :key it
+             :children
+             (list
+              (jest//render-suite-result
+               "" it
+               (ht-get data it)))) suites))))
+
+(defun jest//render-suite-result (indent suite-name suite)
+  ;; TODO: would need to take nested suites into account for sorting
+  (let ((tests (sort (ht-keys suite) #'string<)))
+    (dom/node
+     suite-name
+     " "
+     (jest//render-suite-status suite)
+     "\n"
+     (dom/make-node
+      :children
+      (--map (dom/make-node
+              :key it
+              :children
+              (list
+               (jest//render-test-result
+                (concat indent "  ")
+                (ht-get suite it)))) tests)))))
+
+(defun jest//render-suite-status (suite)
+  (let* ((status (jest//aggregate-status (ht-values suite)))
+         (passed (length (alist-get 'passed status)))
+         (failed (length (alist-get 'failed status)))
+         (pending (length (alist-get 'pending status))))
+    (dom/node
+     "["
+     (propertize (format "%s" passed) 'face '(:foreground "green"))
+     (when (< 0 failed)
+       (dom/node
+        "/"
+        (propertize (format "%s" failed) 'face '(:foreground "red"))))
+     (when (< 0 pending)
+       (dom/node
+        "/"
+        (propertize (format "%s" pending) 'face '(:foreground "yellow"))))
+     "]")))
+
+(defun jest//render-test-result (indent result)
+  (dom/node
+   (concat indent "  ")
+   (case (jest-test-result-status result)
+     ('passed (propertize "✓" 'face '(:foreground "green")))
+     ('failed (propertize "✕" 'face '(:foreground "red")))
+     ('pending (propertize "○" 'face '(:foreground "yellow")))
+     (t (propertize "?" 'face 'flycheck-fringe-info)))
+   " "
+   (dom/make-node
+    :children
+    (--map (dom/node it " ")
+           (cdr (jest-test-result-ancestor-titles result))))
+   (dom/with-properties
+    (jest-test-result-title result)
+    'test-result result)
+   "\n"))
 
 
 ;; sections
