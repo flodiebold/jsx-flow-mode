@@ -178,7 +178,7 @@
      "...")))
 
 (defun jsx-flow//flow-offset-to-pos (offset)
-  (byte-to-position (1+ offset)))
+  (1+ offset))
 
 (defun jsx-flow//eldoc-show-type-info (data)
   "Shows the passed type info using eldoc."
