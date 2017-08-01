@@ -1079,7 +1079,10 @@
           (unless (eq prev next)
             (case prev
               ((text template-text regex)
-               (put-text-property (1- pos) pos 'syntax-table '(15))))
+               ;; remove existing 15 (that means it's a one-char string)
+               (if (equal (get-text-property (1- pos) 'syntax-table) '(15))
+                   (remove-text-properties (1- pos) pos '(syntax-table))
+                 (put-text-property (1- pos) pos 'syntax-table '(15)))))
             (case next
               ((text template-text regex)
                (put-text-property pos (1+ pos) 'syntax-table '(15))))))))))
