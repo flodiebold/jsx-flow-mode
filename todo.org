@@ -97,6 +97,7 @@ i.e. <Foo.Bar />
 ** TODO use flow ide connection to get type errors
 ** TODO can we let flow typecheck the unsaved buffer?
 ** TODO show syntax errors from AST
+** TODO integrate flow warnings
 * TODO formatting with prettier
 * eldoc improvements
 ** TODO nicer formatting / highlighting for printed types
@@ -161,6 +162,8 @@ i.e. <Foo.Bar />
 * code refactoring
 ** TODO split up into multiple files
 ** TODO switch to hashtables
+* better error handling
+** TODO ... when there's no flow bin or it's too old
 * bugs
 ** TODO smartparens prevents deleting first character of JSX text
 ** TODO smartparens can't match delimiters in template literal
@@ -169,7 +172,8 @@ i.e. <Foo.Bar />
 ** TODO writing a comment at the top of the file can cause the whole file to be marked as regex
 ** TODO " or ' in JSX text breaks coloring
 ** TODO coloring sometimes doesn't work on open
-** TODO buffer *flow-error* has a running process, kill it? y/n
+** DONE buffer *flow-error* has a running process, kill it? y/n
+   CLOSED: [2017-08-15 Di 13:56]
 ** TODO react component proptype flow errors shown in the wrong place
 ** DONE don't parse stderr output from flow
    CLOSED: [2017-04-18 Di 21:12]
