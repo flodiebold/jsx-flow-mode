@@ -98,7 +98,6 @@ i.e. <Foo.Bar />
 ** TODO can we let flow typecheck the unsaved buffer?
 ** TODO show syntax errors from AST
 ** TODO integrate flow warnings
-* TODO formatting with prettier
 * eldoc improvements
 ** TODO nicer formatting / highlighting for printed types
 ** TODO show parameter types when in parameter list
@@ -148,6 +147,7 @@ i.e. <Foo.Bar />
 * refactorings
  - use prettier to print AST for these (at least the more complicated ones)
  - or consider recast
+** TODO move file
 ** TODO rename local
  - [ ] handle patterns & object shorthand
  - [ ] handle exports
@@ -167,6 +167,7 @@ i.e. <Foo.Bar />
 * code refactoring
 ** TODO split up into multiple files
 ** TODO switch to hashtables
+** TODO make coverage display a minor mode
 * better error handling
 ** TODO ... when there's no flow bin or it's too old
 * bugs
@@ -178,4 +179,8 @@ i.e. <Foo.Bar />
 ** TODO " or ' in JSX text breaks coloring
 ** TODO coloring sometimes doesn't work on open
 ** DONE buffer *flow-error* has a running process, kill it? y/n
-   CLOSED: [2017-04-22 Sa 10:00]
+   CLOSED: [2017-08-15 Di 13:56]
+** TODO react component proptype flow errors shown in the wrong place
+** TODO JSX attribute names can contain -
+** DONE don't parse stderr output from flow
+   CLOSED: [2017-04-18 Di 21:12]

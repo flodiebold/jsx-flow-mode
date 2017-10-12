@@ -190,7 +190,8 @@
                    (assq-recursive data 'loc 'end 'offset)))
              (text (buffer-substring start end))
              (text (replace-regexp-in-string "[[:space:]\n]+" " " text))
-             (text (jsx-flow//ellipsize text 30)))
+             (text (jsx-flow//ellipsize text 30))
+             (type (jsx-flow//ellipsize type 50)))
         (eldoc-message (concat text ": " type))))))
 
 (defun jsx-flow/eldoc-show-type-at-point ()
