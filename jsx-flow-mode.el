@@ -68,7 +68,7 @@
   "Calls flow with args on the current buffer, returns the result."
   (let* ((buf (generate-new-buffer "*flow*")))
     (unwind-protect
-        (let* ((result (apply 'call-process-region (point-min) (point-max) "flow" nil (list buf nil) nil args))
+        (let* ((result (apply 'call-process-region (point-min) (point-max) (jsx-flow//get-flow-binary) nil (list buf nil) nil args))
                (output (with-current-buffer buf (buffer-string))))
           (when (= result 0)
             output))
@@ -83,6 +83,13 @@
         (process-send-eof process)))
     process))
 
+(defun jsx-flow//get-flow-binary ()
+  (if-let ((node-modules (locate-dominating-file (buffer-file-name) "node_modules")))
+      (if (file-executable-p (concat node-modules "node_modules/.bin/flow"))
+          (concat node-modules "node_modules/.bin/flow")
+        "flow")
+    "flow"))
+
 (defun jsx-flow//call-flow-async (result-handler &rest args)
   "Calls flow with args asynchronously; passes the result to result-handler."
   (let* ((buffer (current-buffer))
@@ -90,7 +97,7 @@
          (stderr (generate-new-buffer "*flow-error*"))
          (stderr-pipe (make-pipe-process :name "flow-error" :buffer stderr
                                          :noquery t))
-         (process (make-process :name "flow" :buffer buf :command (cons "flow" args)
+         (process (make-process :name "flow" :buffer buf :command (cons (jsx-flow//get-flow-binary) args)
                                 :stderr stderr-pipe :noquery t)))
     (set-process-sentinel process
                           (lambda (process _event)
