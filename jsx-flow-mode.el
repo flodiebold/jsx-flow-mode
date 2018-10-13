@@ -10,6 +10,7 @@
 (require 'js)
 (require 'dash)
 (require 's)
+(require 'lsp-mode)
 
 (defgroup jsx-flow-faces nil
   "Faces for jsx-flow-mode."
@@ -746,50 +747,50 @@
 
 ;; company provider
 
-(defun jsx-flow//fetch-completion-json ()
-  (let* ((loc (jsx-flow//pos-to-flow-location (point)))
-         (filename (buffer-file-name)))
-    (jsx-flow//json-call-flow-on-current-buffer "autocomplete" filename (car loc) (cadr loc))))
+;; (defun jsx-flow//fetch-completion-json ()
+;;   (let* ((loc (jsx-flow//pos-to-flow-location (point)))
+;;          (filename (buffer-file-name)))
+;;     (jsx-flow//json-call-flow-on-current-buffer "autocomplete" filename (car loc) (cadr loc))))
 
-(defun jsx-flow//make-completion-candidate (candidate)
-  (let ((name (cdr (assoc 'name candidate)))
-        (type (cdr (assoc 'type candidate)))
-        (path (cdr (assoc 'path candidate)))
-        (line (cdr (assoc 'line candidate))))
-    (propertize name
-                'type type
-                'path path
-                'line line)))
+;; (defun jsx-flow//make-completion-candidate (candidate)
+;;   (let ((name (cdr (assoc 'name candidate)))
+;;         (type (cdr (assoc 'type candidate)))
+;;         (path (cdr (assoc 'path candidate)))
+;;         (line (cdr (assoc 'line candidate))))
+;;     (propertize name
+;;                 'type type
+;;                 'path path
+;;                 'line line)))
 
-(defun jsx-flow//fetch-completions (&rest _)
-  (let* ((response (jsx-flow//fetch-completion-json))
-         (result (cdr (assoc 'result response)))
-         (names (mapcar #'jsx-flow//make-completion-candidate result)))
-    names))
+;; (defun jsx-flow//fetch-completions (&rest _)
+;;   (let* ((response (jsx-flow//fetch-completion-json))
+;;          (result (cdr (assoc 'result response)))
+;;          (names (mapcar #'jsx-flow//make-completion-candidate result)))
+;;     names))
 
-(defun jsx-flow//get-completion-annotation (candidate)
-  (format " (%s)" (get-text-property 0 'type candidate)))
+;; (defun jsx-flow//get-completion-annotation (candidate)
+;;   (format " (%s)" (get-text-property 0 'type candidate)))
 
-(defun company-jsx-flow-backend (command &optional arg &rest ignored)
-  (interactive (list 'interactive))
+;; (defun company-jsx-flow-backend (command &optional arg &rest ignored)
+;;   (interactive (list 'interactive))
 
-  (case command
-    (interactive (company-begin-backend 'company-jsx-flow-backend))
-    (prefix (and (eq major-mode 'jsx-flow-mode)
-                 (company-grab-symbol-cons "\\." 2)))
-    (candidates
-     (progn
-       ;; (message "candidates %s" arg)
-       (let* ((completes (jsx-flow//fetch-completions))
-              ;; (_ (message "names %s" completes))
-              (list (cl-remove-if-not
-                    (lambda (c) (string-prefix-p arg c))
-                    completes)))
-         ;; (message "list %s" list)
-         list)))
-    (annotation (jsx-flow//get-completion-annotation arg))
-    (location (cons (get-text-property 0 'path arg)
-                    (get-text-property 0 'line arg)))))
+;;   (case command
+;;     (interactive (company-begin-backend 'company-jsx-flow-backend))
+;;     (prefix (and (eq major-mode 'jsx-flow-mode)
+;;                  (company-grab-symbol-cons "\\." 2)))
+;;     (candidates
+;;      (progn
+;;        ;; (message "candidates %s" arg)
+;;        (let* ((completes (jsx-flow//fetch-completions))
+;;               ;; (_ (message "names %s" completes))
+;;               (list (cl-remove-if-not
+;;                     (lambda (c) (string-prefix-p arg c))
+;;                     completes)))
+;;          ;; (message "list %s" list)
+;;          list)))
+;;     (annotation (jsx-flow//get-completion-annotation arg))
+;;     (location (cons (get-text-property 0 'path arg)
+;;                     (get-text-property 0 'line arg)))))
 
 ;; module path completion
 (defconst jsx-flow--require-re
@@ -862,51 +863,51 @@
 
 ;; flycheck
 
-(with-eval-after-load 'flycheck
-  (defun jsx-flow//fc-convert-error (error checker counter buffer)
-    "Return a list of errors from ERROR."
-    (let* ((msg-parts (cdr (assoc 'message error)))
-           (first-part (elt msg-parts 0))
-           (level (if (eq (cdr (assoc 'level first-part)) "warning") 'warning 'error))
-           (file (cdr (assoc 'path first-part)))
-           (line (cdr (assoc 'line first-part)))
-           (col  (cdr (assoc 'start first-part)))
-           (desc (--reduce (format "%s\n%s" acc it) (--map (cdr (assoc 'descr it)) msg-parts))))
-      (when (string= file (buffer-file-name buffer))
-        (list (flycheck-error-new-at line col level desc :checker checker :id counter)))))
+;; (with-eval-after-load 'flycheck
+;;   (defun jsx-flow//fc-convert-error (error checker counter buffer)
+;;     "Return a list of errors from ERROR."
+;;     (let* ((msg-parts (cdr (assoc 'message error)))
+;;            (first-part (elt msg-parts 0))
+;;            (level (if (eq (cdr (assoc 'level first-part)) "warning") 'warning 'error))
+;;            (file (cdr (assoc 'path first-part)))
+;;            (line (cdr (assoc 'line first-part)))
+;;            (col  (cdr (assoc 'start first-part)))
+;;            (desc (--reduce (format "%s\n%s" acc it) (--map (cdr (assoc 'descr it)) msg-parts))))
+;;       (when (string= file (buffer-file-name buffer))
+;;         (list (flycheck-error-new-at line col level desc :checker checker :id counter)))))
 
-  (defun jsx-flow//parse-status-errors (json checker buffer)
-    "Parse flow status errors in OUTPUT."
-    (let* ((errors (cdr (assoc 'errors json)))
-           (counter 0))
-      (-mapcat
-       (lambda (err)
-         (setq counter (1+ counter))
-         (jsx-flow//fc-convert-error err checker (number-to-string counter) buffer))
-       errors)))
+;;   (defun jsx-flow//parse-status-errors (json checker buffer)
+;;     "Parse flow status errors in OUTPUT."
+;;     (let* ((errors (cdr (assoc 'errors json)))
+;;            (counter 0))
+;;       (-mapcat
+;;        (lambda (err)
+;;          (setq counter (1+ counter))
+;;          (jsx-flow//fc-convert-error err checker (number-to-string counter) buffer))
+;;        errors)))
 
-  (defun jsx-flow//check-flow (checker report)
-    (if (jsx-flow//is-flow-project?)
-        (let ((buffer (current-buffer)))
-          (jsx-flow//json-call-flow-async
-           (lambda (status)
-             (let ((errors (jsx-flow//parse-status-errors status checker buffer)))
-               (funcall report 'finished errors)))
-           "status"))
-      (funcall report 'finished nil)))
+;;   (defun jsx-flow//check-flow (checker report)
+;;     (if (jsx-flow//is-flow-project?)
+;;         (let ((buffer (current-buffer)))
+;;           (jsx-flow//json-call-flow-async
+;;            (lambda (status)
+;;              (let ((errors (jsx-flow//parse-status-errors status checker buffer)))
+;;                (funcall report 'finished errors)))
+;;            "status"))
+;;       (funcall report 'finished nil)))
 
-  (flycheck-define-generic-checker 'javascript-flow
-    "A JavaScript syntax and style checker using Flow."
-    :start #'jsx-flow//check-flow
-    ;; TODO :interrupt handler
-    ;; TODO :verify
-    ;; TODO :predicate checking for @flow comment?
-    ;; could just do AST check otherwise
-    :next-checkers '((error . javascript-eslint))
-    :modes '(jsx-flow-mode))
+;;   (flycheck-define-generic-checker 'javascript-flow
+;;     "A JavaScript syntax and style checker using Flow."
+;;     :start #'jsx-flow//check-flow
+;;     ;; TODO :interrupt handler
+;;     ;; TODO :verify
+;;     ;; TODO :predicate checking for @flow comment?
+;;     ;; could just do AST check otherwise
+;;     :next-checkers '((error . javascript-eslint))
+;;     :modes '(jsx-flow-mode))
 
-  (flycheck-add-mode 'javascript-eslint 'jsx-flow-mode)
-  (add-to-list 'flycheck-checkers 'javascript-flow))
+;;   (flycheck-add-mode 'javascript-eslint 'jsx-flow-mode)
+;;   (add-to-list 'flycheck-checkers 'javascript-flow))
 
 
 (defconst jsx-flow--keyword-re
@@ -1193,6 +1194,22 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   (when (or (null jsx-flow--ast-invalid-from) (< beg jsx-flow--ast-invalid-from))
     (setq jsx-flow--ast-invalid-from beg)))
 
+(defun jsx-flow//flow-ls-command ()
+  "Generate the language server startup command."
+  `(,(jsx-flow//get-flow-binary)
+    "lsp"))
+
+(defconst jsx-flow//get-root
+  (lsp-make-traverser #'(lambda (dir)
+                          (directory-files dir nil "package.json"))))
+
+(lsp-define-stdio-client
+ lsp-flow "javascript"
+ jsx-flow//get-root
+ nil
+ :ignore-messages '("\[INFO].*?nuclide")
+ :command-fn 'jsx-flow//flow-ls-command)
+
 ;;;###autoload
 (define-derived-mode jsx-flow-mode
   prog-mode "JSX/Flow"
@@ -1238,8 +1255,8 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
     (c-setup-paragraph-variables))
 
   ;; eldoc
-  (set (make-local-variable 'eldoc-documentation-function) #'jsx-flow/eldoc-show-type-at-point)
-  (eldoc-mode 1)
+  ;; (set (make-local-variable 'eldoc-documentation-function) #'jsx-flow/eldoc-show-type-at-point)
+  ;; (eldoc-mode 1)
 
   ;; parsing
   (setq jsx-flow--ast nil)
@@ -1258,11 +1275,15 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
                                  (when jsx-flow--ast-invalid-from
                                    (jsx-flow//do-parse))))))
 
-  ;; company
-  (add-to-list (make-local-variable 'company-backends) '(company-jsx-flow-backend :with company-yasnippet))
-  (add-to-list (make-local-variable 'company-backends) 'company-jsx-flow-import-backend)
+  ;; lsp
+  (lsp-flow-enable)
 
-  (flycheck-mode 1))
+  ;; company
+  ;; (add-to-list (make-local-variable 'company-backends) '(company-jsx-flow-backend :with company-yasnippet))
+  ;; (add-to-list (make-local-variable 'company-backends) 'company-jsx-flow-import-backend)
+
+  (flycheck-mode 1)
+  )
 
 (provide 'jsx-flow-mode)
 ;;; jsx-flow-mode.el ends here
