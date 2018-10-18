@@ -909,6 +909,11 @@
 ;;   (flycheck-add-mode 'javascript-eslint 'jsx-flow-mode)
 ;;   (add-to-list 'flycheck-checkers 'javascript-flow))
 
+(with-eval-after-load 'flycheck
+  (flycheck-add-mode 'javascript-eslint 'jsx-flow-mode)
+  (with-eval-after-load 'lsp-ui
+    (flycheck-add-next-checker 'lsp-ui 'javascript-eslint)))
+
 
 (defconst jsx-flow--keyword-re
   (js--regexp-opt-symbol
