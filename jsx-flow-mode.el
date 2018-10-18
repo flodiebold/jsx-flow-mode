@@ -1208,12 +1208,20 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   (lsp-make-traverser #'(lambda (dir)
                           (directory-files dir nil "package.json"))))
 
+(defconst jsx-flow--lsp-handlers
+  '(("telemetry/event" . (lambda (_w _p)))))
+
+(defun jsx-flow//initialize-lsp (client)
+  (mapcar #'(lambda (p) (lsp-client-on-notification client (car p) (cdr p)))
+          jsx-flow--lsp-handlers))
+
 (lsp-define-stdio-client
  lsp-flow "javascript"
  jsx-flow//get-root
  nil
  :ignore-messages '("\[INFO].*?nuclide")
- :command-fn 'jsx-flow//flow-ls-command)
+ :initialize #'jsx-flow//initialize-lsp
+ :command-fn #'jsx-flow//flow-ls-command)
 
 ;;;###autoload
 (define-derived-mode jsx-flow-mode
