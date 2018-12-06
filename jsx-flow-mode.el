@@ -1,8 +1,8 @@
 ;;; jsx-flow-mode.el --- Support for JavaScript with JSX and flow annotations -*- lexical-binding: t -*-
 
 ;; Version: 0.1.0
-
 ;; Author: Florian Diebold <flodiebold@gmail.com>
+;; Package-Requires: ((emacs "25") (lsp-mode "5.0") (dash "1.0"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -10,7 +10,7 @@
 (require 'js)
 (require 'dash)
 (require 's)
-(require 'lsp-mode)
+(require 'ht)
 
 (defgroup jsx-flow-faces nil
   "Faces for jsx-flow-mode."
@@ -1124,11 +1124,11 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
 (defun jsx-flow//indent-js-line ()
   ;; TODO ensure up-to-date parse tree
   ;; (parse tree is currently unused though)
-  (let ((path (jsx-flow//node-path-at-pos (point-at-bol)))
+  (let (;(path (jsx-flow//node-path-at-pos (point-at-bol)))
         (parse-status (save-excursion (syntax-ppss (point-at-bol))))
         (offset (- (point) (save-excursion (back-to-indentation) (point)))))
     (unless (nth 3 parse-status)
-      (indent-line-to (jsx-flow//proper-indentation parse-status path))
+      (indent-line-to (jsx-flow//proper-indentation parse-status nil))
       (when (> offset 0) (forward-char offset)))))
 
 (defun jsx-flow//proper-indentation (parse-status _node-path)
@@ -1204,10 +1204,6 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   `(,(jsx-flow//get-flow-binary)
     "lsp"))
 
-(defconst jsx-flow//get-root
-  (lsp-make-traverser #'(lambda (dir)
-                          (directory-files dir nil "package.json"))))
-
 (defconst jsx-flow--lsp-handlers
   '(("telemetry/event" . (lambda (_w _p)))))
 
@@ -1215,13 +1211,13 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   (mapcar #'(lambda (p) (lsp-client-on-notification client (car p) (cdr p)))
           jsx-flow--lsp-handlers))
 
-(lsp-define-stdio-client
- lsp-flow "javascript"
- jsx-flow//get-root
- nil
- :ignore-messages '("\[INFO].*?nuclide")
- :initialize #'jsx-flow//initialize-lsp
- :command-fn #'jsx-flow//flow-ls-command)
+(with-eval-after-load 'lsp
+  (lsp-register-client
+   (make-lsp-client :new-connection (lsp-stdio-connection #'jsx-flow//flow-ls-command)
+                    :notification-handlers (ht<-alist jsx-flow--lsp-handlers)
+                    :major-modes '(jsx-flow-mode)
+                    :server-id 'jsx-flow
+                    :ignore-messages '("\[INFO].*?nuclide"))))
 
 ;;;###autoload
 (define-derived-mode jsx-flow-mode
@@ -1289,7 +1285,7 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
                                    (jsx-flow//do-parse))))))
 
   ;; lsp
-  (lsp-flow-enable)
+  (lsp)
 
   ;; company
   ;; (add-to-list (make-local-variable 'company-backends) '(company-jsx-flow-backend :with company-yasnippet))
