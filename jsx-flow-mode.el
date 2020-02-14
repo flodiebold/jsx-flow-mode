@@ -911,8 +911,14 @@
 
 (with-eval-after-load 'flycheck
   (flycheck-add-mode 'javascript-eslint 'jsx-flow-mode)
+  ;; new lsp-mode
+  (with-eval-after-load 'lsp
+    (when (flycheck-valid-checker-p 'lsp)
+      (flycheck-add-next-checker 'lsp 'javascript-eslint)))
+  ;; old lsp-ui
   (with-eval-after-load 'lsp-ui
-    (flycheck-add-next-checker 'lsp-ui 'javascript-eslint)))
+    (when (flycheck-valid-checker-p 'lsp-ui)
+      (flycheck-add-next-checker 'lsp-ui 'javascript-eslint))))
 
 
 (defconst jsx-flow--keyword-re
@@ -1268,24 +1274,24 @@ i.e., customize JSX element indentation with `sgml-basic-offset',
   ;; (eldoc-mode 1)
 
   ;; parsing
-  (setq jsx-flow--ast nil)
-  (setq jsx-flow--ast-invalid-from (point-min))
-  (jsx-flow//do-parse)
-  (add-hook 'after-change-functions #'jsx-flow//after-change t t)
+  ;; (setq jsx-flow--ast nil)
+  ;; (setq jsx-flow--ast-invalid-from (point-min))
+  ;; (jsx-flow//do-parse)
+  ;; (add-hook 'after-change-functions #'jsx-flow//after-change t t)
 
-  (when jsx-flow-type-coverage
-    (jsx-flow//do-coverage))
-  (add-hook 'after-save-hook #'jsx-flow//do-coverage nil t)
+  ;; (when jsx-flow-type-coverage
+  ;;   (jsx-flow//do-coverage))
+  ;; (add-hook 'after-save-hook #'jsx-flow//do-coverage nil t)
 
-  (when (null jsx-flow--parse-timer)
-    (setq jsx-flow--parse-timer
-          (run-with-idle-timer 0.4 t
-                               (lambda ()
-                                 (when jsx-flow--ast-invalid-from
-                                   (jsx-flow//do-parse))))))
+  ;; (when (null jsx-flow--parse-timer)
+  ;;   (setq jsx-flow--parse-timer
+  ;;         (run-with-idle-timer 0.4 t
+  ;;                              (lambda ()
+  ;;                                (when jsx-flow--ast-invalid-from
+  ;;                                  (jsx-flow//do-parse))))))
 
   ;; lsp
-  (lsp)
+  ;; (lsp)
 
   ;; company
   ;; (add-to-list (make-local-variable 'company-backends) '(company-jsx-flow-backend :with company-yasnippet))
